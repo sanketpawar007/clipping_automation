@@ -1,0 +1,33 @@
+id: 705f6e21-38af-408c-9e55-c77e4611bf09
+name: Let Him Mansplain
+accounts: {youtube: lhmtruthbombs, instagram: lhmtruthbombs}
+platforms: [instagram, youtube]
+sources: ["https://www.youtube.com/@lethimmansplain"]
+payout_cpm: {instagram: 1.00, youtube: 0.50}
+overlays:
+  watermark:
+    image: assets/lhm_watermark.png
+    text: "@lethimmansplain"
+    position: top_right
+    opacity: 0.8
+    full_duration: true
+caption:
+  first_line_must_contain: "@lethimmansplain"
+  hashtags: ["#lethimmansplain", "#hottakes", "#podcast"]
+  templates:
+    - "Full episode on @lethimmansplain\n{hook}\n{hashtags}"
+    - "{hook} @lethimmansplain\nAgree or disagree? 👇\n{hashtags}"
+pinned_comment:
+  platforms: [instagram]
+  replies:
+    - "Full episode on YouTube @lethimmansplain 🔗"
+    - "Full episode linked in bio 🔗"
+preferences:
+  multi_guest: true
+  styles: [humour, big_reaction, truth_bomb, supercut]
+  max_similar_posts: 5
+clip: {min_seconds: 20, max_seconds: 75}
+forbid: [ad_like, stolen_clip]
+banned_words: []
+submit_within_minutes: 30
+min_live_days: 30

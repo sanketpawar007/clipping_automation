@@ -1,0 +1,24 @@
+# Template for a GTA VI / streamer campaign. Copy to campaigns/<short-name>.yaml and fill in
+# from the campaign's own brief (many rules are only visible after joining).
+# Only clip streams this campaign permits.
+id: ""                              # campaign uuid from the Content Rewards URL
+name: ""
+niche: gaming                       # weights chat/audio/video signals above the transcript
+accounts: {youtube: hypereplayhq, instagram: hypereplayhq}
+platforms: [instagram, youtube]
+sources: []                         # the streamer's channel URLs
+payout_cpm: {instagram: 0, youtube: 0}
+profile: example_streamer           # profiles/<name>.yaml: facecam + gameplay layout
+overlays: {}                        # add `watermark:` only if the brief requires one
+caption:
+  first_line_must_contain: null
+  hashtags: ["#gta6", "#gtavi", "#gaming"]
+  templates:
+    - "{hook}\n{hashtags}"
+pinned_comment: {platforms: [], replies: []}
+preferences: {styles: [big_reaction, funny_fail, clutch, chaos]}
+clip: {min_seconds: 15, max_seconds: 60}
+forbid: [spoilers, ad_like]         # add `watermark` if the brief forbids watermarks
+banned_words: []
+submit_within_minutes: 30
+min_live_days: 30

@@ -1,0 +1,17 @@
+# Layout profile for a streamer whose facecam sits in a fixed corner.
+# Copy this file, rename it, and point a campaign at it with `profile: <file name without .yaml>`.
+#
+# layout options:
+#   facecam_top  facecam on top, gameplay below (needs the `facecam` box)
+#   center       gameplay only, centre crop
+#   track        follow the main face (podcasts, IRL streams)
+#   auto         track if a face is visible, otherwise blurred background
+layout: facecam_top
+
+# Where the facecam is in the original 16:9 video, as fractions of width and height.
+# This example is a box in the bottom-left corner.
+facecam: {x: 0.00, y: 0.70, w: 0.25, h: 0.30}
+facecam_height: 760        # pixels of the 1920-tall output given to the facecam
+
+# Which part of the gameplay to keep: 0 = left edge, 0.5 = centre, 1 = right edge.
+gameplay_focus_x: 0.5
