@@ -7,7 +7,7 @@ from app.config import ROOT, get_settings
 from app.core import captions, media, reframe
 from app.rules.campaign import Campaign
 
-WM_WIDTH = 400
+WM_WIDTH = 460
 WM_POS = {
     "top_right": "W-w-40:150", "top_left": "40:150",
     "bottom_right": "W-w-40:H-h-420", "bottom_left": "40:H-h-420",
@@ -26,6 +26,7 @@ def render_clip(src: str | Path, start: float, end: float, words: list[dict], ou
     vf, layout = reframe.build_filter(src, start, end, info["width"], info["height"], profile)
     chain, last = [vf], "v"
     inputs = ["-ss", f"{start:.3f}", "-to", f"{end:.3f}", "-i", str(src)]
+    out.parent.mkdir(parents=True, exist_ok=True)
 
     if with_captions and words:
         # with facecam on top, captions sit on the seam between the two panels

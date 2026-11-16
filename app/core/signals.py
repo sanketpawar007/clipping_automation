@@ -78,9 +78,14 @@ def peaks(tracks: dict[str, np.ndarray], weights: dict[str, float], top: int = 1
     """Seconds where the weighted signals peak. Used to add candidates the transcript pass missed."""
     n = len(next(iter(tracks.values())))
     combined = np.zeros(n)
+    total = 0.0
     for name, x in tracks.items():
-        combined += weights.get(name, 0) * x
-    sm = _smooth(combined, window)
+        if np.any(x):                      # only signals this video actually has
+            combined += weights.get(name, 0) * x
+            total += weights.get(name, 0)
+    if total == 0:
+        return []
+    sm = _smooth(combined / total, window)
     out: list[tuple[int, float]] = []
     for t in np.argsort(sm)[::-1]:
         if sm[t] <= 0.05 or len(out) >= top:

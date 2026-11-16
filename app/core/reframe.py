@@ -41,6 +41,12 @@ def _sample_faces(src: str | Path, start: float, end: float, w: int, h: int) -> 
     return out
 
 
+def _mid(values: list[float]) -> float:
+    """Median that always returns a real sample. A plain median of two people's positions
+    would average them and point the crop at the empty space between."""
+    return float(np.percentile(values, 50, method="nearest"))
+
+
 def _segments(samples: list[list[tuple]], jump: float = 0.12) -> list[tuple[float, float]]:
     """Turns per-frame faces into [(time, centre_x)] holds. The crop stays still while the same
     person is on screen and cuts (rather than slides) when the camera or speaker changes."""
@@ -62,14 +68,14 @@ def _segments(samples: list[list[tuple]], jump: float = 0.12) -> list[tuple[floa
 
     segs: list[tuple[int, list[float]]] = [(0, [xs[0]])] if xs else []
     for i in range(1, len(xs)):
-        seg_x = float(np.median(segs[-1][1]))
+        seg_x = _mid(segs[-1][1])
         moved = abs(xs[i] - seg_x) > jump
         confirmed = i + 1 >= len(xs) or abs(xs[i + 1] - seg_x) > jump   # ignore 1-frame glitches
         if moved and confirmed:
             segs.append((i, [xs[i]]))
         else:
             segs[-1][1].append(xs[i] if not moved else seg_x)
-    return [(i / SAMPLE_FPS, float(np.median(v))) for i, v in segs]
+    return [(i / SAMPLE_FPS, _mid(v)) for i, v in segs]
 
 
 def _crop_x_expr(segs: list[tuple[float, float]], w: int, crop_w: int) -> str:

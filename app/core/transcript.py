@@ -41,7 +41,14 @@ def _assemblyai(audio: Path) -> list[dict]:
 def _local_whisper(audio: Path, model_size: str = "small.en") -> list[dict]:
     from faster_whisper import WhisperModel
     model = WhisperModel(model_size, device="cpu", compute_type="int8")
-    segments, _ = model.transcribe(str(audio), word_timestamps=True, vad_filter=True)
+    # Decode with our own ffmpeg: faster-whisper's built-in decoder breaks on newer PyAV releases.
+    import subprocess
+
+    import numpy as np
+    raw = subprocess.run([get_settings().ffmpeg, "-v", "error", "-i", str(audio), "-ac", "1",
+                          "-ar", "16000", "-f", "s16le", "-"], capture_output=True, check=True).stdout
+    samples = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+    segments, _ = model.transcribe(samples, word_timestamps=True, vad_filter=True)
     return [{"text": w.word.strip(), "start": float(w.start), "end": float(w.end), "speaker": None}
             for seg in segments for w in (seg.words or []) if w.word.strip()]
 
