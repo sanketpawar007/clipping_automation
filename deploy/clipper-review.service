@@ -1,0 +1,13 @@
+[Unit]
+Description=viral-clipper review dashboard (localhost only, reach it through an SSH tunnel)
+After=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/clipping_automation
+ExecStart=/home/ubuntu/.local/bin/uv run uvicorn app.review.server:app --host 127.0.0.1 --port 8010
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,13 @@
+[Unit]
+Description=viral-clipper campaign scanner (hourly)
+After=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/clipping_automation
+ExecStart=/home/ubuntu/.local/bin/uv run python -m app.cli scan --loop
+Restart=always
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target

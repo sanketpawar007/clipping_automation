@@ -15,8 +15,9 @@ scan:          ## one pass over the Content Rewards board
 scan-loop:     ## scan every hour
 	uv run python -m app.cli scan --loop
 
-review:        ## open the review dashboard at http://127.0.0.1:8000
-	uv run uvicorn app.review.server:app --reload --port 8000
+PORT ?= 8010
+review:        ## open the review dashboard at http://127.0.0.1:8010
+	uv run uvicorn app.review.server:app --host 127.0.0.1 --port $(PORT)
 
 telegram-id:   ## print your chat id after you message the bot once
 	uv run python -m app.cli telegram-id

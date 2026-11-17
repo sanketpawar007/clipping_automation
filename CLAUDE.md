@@ -16,6 +16,6 @@
 - `make doctor`: check tools and keys. `make test`, `make lint`.
 - `make scan` / `make scan-loop`: Content Rewards board scan (hourly loop). `uv run python -m app.cli campaigns` lists stored campaigns.
 - `uv run python -m app.cli clip <url> -c <campaign>`: VOD to clips (`app/pipeline.py`). Output and caches live in `data/videos/<id>/`.
-- `make review`: dashboard at http://127.0.0.1:8000 (approve sends to Telegram).
+- `make review`: dashboard at http://127.0.0.1:8010 (approve sends to Telegram).
 - Without `ANTHROPIC_API_KEY` the pipeline ranks on signals only; without `ASSEMBLYAI_API_KEY` it uses local Whisper (slow, no speakers).
 - Face tracking uses OpenCV YuNet (`assets/models/`), not MediaPipe: MediaPipe's current release needs a separate model download anyway and pulled in heavy dependencies.

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import shutil
+import sys
 from functools import lru_cache
 from pathlib import Path
 
@@ -35,6 +36,9 @@ class Settings(BaseSettings):
     recall_model: str = "claude-haiku-5-5"
     judge_model: str = "claude-sonnet-5-5"
     gemini_model: str = "gemini-2.5-flash"
+
+    # Caption font must be installed on the machine: Arial Black on macOS, Roboto Black on Linux.
+    caption_font: str = "Arial Black" if sys.platform == "darwin" else "Roboto Black"
 
     @property
     def ffmpeg(self) -> str:

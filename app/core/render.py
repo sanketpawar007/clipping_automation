@@ -31,7 +31,8 @@ def render_clip(src: str | Path, start: float, end: float, words: list[dict], ou
     if with_captions and words:
         # with facecam on top, captions sit on the seam between the two panels
         margin = OUT_SEAM if layout == "facecam_top" else 560
-        ass = captions.write_ass(words, start, end, out.with_suffix(".ass"), margin_v=margin)
+        ass = captions.write_ass(words, start, end, out.with_suffix(".ass"),
+                                 font=s.caption_font, margin_v=margin)
         chain.append(f"[{last}]ass=filename='{_esc(ass)}'[c]")
         last = "c"
 
