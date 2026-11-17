@@ -68,7 +68,9 @@ def render_clip(src: str | Path, segs: list[tuple[float, float]], words: list[di
     pieces = [(offsets[i] + (ps - segs[i][0]), offsets[i] + (pe - segs[i][0]))
               for i, ps_list in enumerate(kept) for ps, pe in ps_list]
     kept_total = sum(e - a for a, e in pieces)
-    tightened = kept_total < total - 0.2 and len(pieces) > 0
+    # never let pause-cutting push a clip under the campaign's minimum length
+    tightened = (kept_total < total - 0.2 and len(pieces) > 0
+                 and kept_total >= campaign.clip.min_seconds)
     if tightened:
         eps = 0.5 / fps
         expr = "+".join(f"gte(t,{a - eps:.4f})*lt(t,{e - eps:.4f})" for a, e in pieces)

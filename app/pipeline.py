@@ -52,7 +52,18 @@ def _measure(w: select.Window, tracks: dict) -> None:
     w.signals = {k: float(np.mean([p[k] for p in per])) for k in per[0]} if per else {}
 
 
-def run(url: str, campaign_slug: str, n_clips: int | None = None, with_captions: bool = True) -> list[int]:
+def _save_candidates(workdir, windows: list[select.Window], sents) -> None:
+    """Writes every candidate with its scores to candidates.json, so a run can be inspected."""
+    rows = [{"id": w.id, "kind": w.kind, "source": w.source, "score": round(w.score, 3),
+             "judge": w.judge, "signals": w.signals, "segs": w.segs, "cold_line": w.cold_line,
+             "headline": w.headline, "hook": w.hook, "reason": w.reason,
+             "first_line": sents[w.ranges[0][0]].text[:120]}
+            for w in sorted(windows, key=lambda x: x.score, reverse=True)]
+    (workdir / "candidates.json").write_text(db.dumps(rows))
+
+
+def run(url: str, campaign_slug: str, n_clips: int | None = None, with_captions: bool = True,
+        only_kind: str | None = None) -> list[int]:
     t0 = time.time()
     s = get_settings()
     camp = campaigns.load(campaign_slug)
@@ -127,7 +138,15 @@ def run(url: str, campaign_slug: str, n_clips: int | None = None, with_captions:
 
         for w in windows:
             w.score = select.final_score(w, weights, active)
-        shortlist = select.dedupe(windows)[: n_clips + 3]
+        ranked = select.dedupe(windows)
+        if only_kind:
+            ranked = [w for w in ranked if w.kind == only_kind]
+        # Supercuts are the campaign's preferred format but score lower on a rubric built for
+        # single moments, so the best few always get a place.
+        reserved = [w for w in ranked if w.kind == "supercut"][: camp.editing.supercut.reserve]
+        rest = [w for w in ranked if w not in reserved]
+        shortlist = reserved + rest[: max(0, n_clips + 3 - len(reserved))]
+        _save_candidates(workdir, windows, sents)
 
         if s.gemini_api_key:
             _step(f"video judge: Gemini watches the top {len(shortlist)}", t0)
@@ -140,7 +159,9 @@ def run(url: str, campaign_slug: str, n_clips: int | None = None, with_captions:
                 active.add("video")
                 for w in shortlist:
                     w.score = select.final_score(w, weights, active)
-        final = sorted(shortlist, key=lambda w: w.score, reverse=True)[:n_clips]
+        rest = sorted((w for w in shortlist if w not in reserved), key=lambda w: w.score, reverse=True)
+        final = sorted(reserved + rest[: max(0, n_clips - len(reserved))],
+                       key=lambda w: w.score, reverse=True)
 
         clip_ids: list[int] = []
         for i, w in enumerate(final):

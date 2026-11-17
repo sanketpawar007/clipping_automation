@@ -17,7 +17,7 @@ ScaledBorderAndShadow: yes
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: Cap,{font},{size},&H00FFFFFF,&H00FFFFFF,&H00000000,&H96000000,-1,0,0,0,100,100,0,0,1,7,3,2,60,60,{margin_v},1
-Style: Head,{font},60,&H00101010,&H00101010,&H00FFFFFF,&H00FFFFFF,-1,0,0,0,100,100,0,0,3,18,0,2,70,70,{head_margin},1
+Style: Head,{font},74,&H00101010,&H00101010,&H00FFFFFF,&H00FFFFFF,-1,0,0,0,100,100,0,0,3,18,0,2,70,70,{head_margin},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -53,7 +53,7 @@ def chunk(words: list[dict]) -> list[list[dict]]:
     return groups
 
 
-def wrap_headline(text: str, width: int = 24, max_lines: int = 2) -> str:
+def wrap_headline(text: str, width: int = 20, max_lines: int = 2) -> str:
     """Breaks the headline into at most two balanced lines (ASS uses \\N for a line break)."""
     words, lines = _strip(text).split(), [""]
     for w in words:

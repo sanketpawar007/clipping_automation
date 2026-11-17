@@ -49,6 +49,7 @@ class Supercut(BaseModel):
     enabled: bool = False
     min_parts: int = 2
     max_parts: int = 4
+    reserve: int = 2                # places in each run kept for the best supercuts
 
 
 class Tighten(BaseModel):

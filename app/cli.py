@@ -43,10 +43,12 @@ def campaigns(top: int = 15, category: str = typer.Option("", help="Filter, e.g.
 @app.command()
 def clip(url: str, campaign: str = typer.Option(..., "--campaign", "-c", help="campaigns/<name>.yaml"),
          n: int = typer.Option(0, help="How many clips to make (0 = the campaign's setting)."),
-         no_captions: bool = typer.Option(False, help="Skip burned-in captions.")) -> None:
+         no_captions: bool = typer.Option(False, help="Skip burned-in captions."),
+         only: str = typer.Option("", help="Render only this kind: single or supercut.")) -> None:
     """Turn one video URL into ready-to-review clips for a campaign."""
     from app import pipeline
-    pipeline.run(url, campaign, n_clips=n or None, with_captions=not no_captions)
+    pipeline.run(url, campaign, n_clips=n or None, with_captions=not no_captions,
+                 only_kind=only or None)
 
 
 @app.command()

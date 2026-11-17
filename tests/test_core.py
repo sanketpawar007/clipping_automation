@@ -137,7 +137,7 @@ def test_tighten_cuts_pauses_and_fillers_and_keeps_captions_in_sync():
 
 
 def test_headline_wraps_to_two_lines():
-    assert captions.wrap_headline("Asked men: why won't you commit?") == "Asked men: why won't you\\Ncommit?"
+    assert captions.wrap_headline("Asked men: why won't you commit?") == "Asked men: why won't\\Nyou commit?"
 
 
 def test_caption_uses_engagement_question():

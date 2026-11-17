@@ -21,7 +21,7 @@ editing:
     about in the comments: a blunt opinion, a surprising admission, a funny disagreement.
     Viewers are mostly women curious about how men think, and men who feel seen.
   candidates: 10               # clips offered per episode; you approve the best few
-  supercut: {enabled: true, min_parts: 2, max_parts: 4}
+  supercut: {enabled: true, min_parts: 2, max_parts: 4, reserve: 2}
   tighten: {enabled: true, max_pause: 0.45, keep_pause: 0.18, remove_fillers: true}
   headline:
     enabled: true
