@@ -30,6 +30,7 @@
     </ul>
 
     <div class="row">
+      <a class="btn" href="/download/{{ c.id }}" download>Download video</a>
       {% if c.status == 'pending' %}
         <button class="primary" hx-post="/clips/{{ c.id }}/approve" hx-target="#clip-{{ c.id }}"
                 hx-swap="outerHTML" {{ 'disabled' if not c.compliant }}>Approve and send to phone</button>

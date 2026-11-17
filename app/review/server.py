@@ -66,6 +66,17 @@ def video(clip_id: int):
     return FileResponse(clip["path"], media_type="video/mp4")
 
 
+@app.get("/download/{clip_id}")
+def download(clip_id: int):
+    """Same file as /video, but the browser saves it instead of playing it."""
+    with db.connect() as conn:
+        clip = _clip(conn, clip_id)
+    if not Path(clip["path"]).exists():
+        raise HTTPException(404, "clip file missing")
+    return FileResponse(clip["path"], media_type="video/mp4",
+                        filename=f"{clip['campaign']}_clip{clip_id}.mp4")
+
+
 @app.post("/clips/{clip_id}/caption", response_class=HTMLResponse)
 def save_caption(request: Request, clip_id: int, caption: str = Form(...)):
     """Saves an edited caption and re-checks it against the campaign rules."""
