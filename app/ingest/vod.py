@@ -30,6 +30,17 @@ def video_dir(video_id: str) -> Path:
     return d
 
 
+def _offline_id(url: str) -> str | None:
+    """Works out the video id from the URL alone, without contacting the site."""
+    for ie in yt_dlp.extractor.gen_extractor_classes():
+        if ie.IE_NAME != "generic" and ie.suitable(url):
+            try:
+                return ie.get_temp_id(url)
+            except Exception:  # noqa: BLE001
+                return None
+    return None
+
+
 def ingest(url: str, max_height: int = 1080, max_comments: int = 300) -> dict:
     """Downloads the video (once) and returns its metadata. Results are cached on disk."""
     s = get_settings()
@@ -39,6 +50,12 @@ def ingest(url: str, max_height: int = 1080, max_comments: int = 300) -> dict:
         if not cookies.exists():
             raise FileNotFoundError(f"YTDLP_COOKIES_FILE points to a missing file: {cookies}")
         base["cookiefile"] = str(cookies)
+    # Already downloaded? Then do not contact the site at all.
+    known = _offline_id(url)
+    if known:
+        cached = get_settings().data_dir / "videos" / known
+        if (cached / "meta.json").exists() and (cached / "source.mp4").exists():
+            return json.loads((cached / "meta.json").read_text())
     probe_opts = {**base, "skip_download": True}
     with yt_dlp.YoutubeDL(probe_opts) as y:
         vid = y.extract_info(url, download=False)["id"]
