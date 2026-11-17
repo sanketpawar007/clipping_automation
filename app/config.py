@@ -35,7 +35,7 @@ class Settings(BaseSettings):
 
     recall_model: str = "claude-haiku-5-5"
     judge_model: str = "claude-sonnet-5-5"
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-3.8-flash"
 
     # Optional Netscape-format cookies file for yt-dlp. YouTube blocks most cloud server IPs
     # unless the request carries cookies from a logged-in browser.

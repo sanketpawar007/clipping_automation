@@ -24,7 +24,7 @@ def main() -> int:
     dirs = [p.parent for p in (s.data_dir / "videos").glob("*/words.json")
             if (p.parent / "source.mp4").exists()]
     if not dirs:
-        console.print("[red]No downloaded video with a transcript in data/videos/. Run one clip job first.[/]")
+        console.print("[red]No downloaded video in data/videos/. Run one clip job first.[/]")
         return 1
     d = dirs[0]
     src = d / "source.mp4"
