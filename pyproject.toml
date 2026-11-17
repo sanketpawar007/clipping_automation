@@ -22,7 +22,7 @@ dependencies = [
     "rich>=15.0.0",
     "typer>=0.29.1",
     "uvicorn[standard]>=0.54.0",
-    "yt-dlp>=2026.10.26",
+    "yt-dlp[default]>=2026.10.26",
 ]
 
 [dependency-groups]
