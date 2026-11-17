@@ -1,4 +1,4 @@
-.PHONY: doctor test lint scan scan-loop review telegram-id
+.PHONY: selftest doctor test lint scan scan-loop review telegram-id
 
 doctor:        ## check tools and keys
 	uv run python -m app.doctor
@@ -21,3 +21,6 @@ review:        ## open the review dashboard at http://127.0.0.1:8010
 
 telegram-id:   ## print your chat id after you message the bot once
 	uv run python -m app.cli telegram-id
+
+selftest:      ## one small real call to each paid service
+	uv run python -m app.selftest
