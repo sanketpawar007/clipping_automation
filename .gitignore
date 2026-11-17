@@ -11,3 +11,4 @@ __pycache__/
 *.webm
 *.m4a
 *.wav
+cookies*.txt

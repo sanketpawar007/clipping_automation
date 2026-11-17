@@ -33,7 +33,13 @@ def video_dir(video_id: str) -> Path:
 def ingest(url: str, max_height: int = 1080, max_comments: int = 300) -> dict:
     """Downloads the video (once) and returns its metadata. Results are cached on disk."""
     s = get_settings()
-    probe_opts = {"quiet": True, "no_warnings": True, "skip_download": True, "noplaylist": True}
+    base: dict = {"quiet": True, "no_warnings": True, "noplaylist": True}
+    if s.ytdlp_cookies_file:
+        cookies = Path(s.ytdlp_cookies_file).expanduser()
+        if not cookies.exists():
+            raise FileNotFoundError(f"YTDLP_COOKIES_FILE points to a missing file: {cookies}")
+        base["cookiefile"] = str(cookies)
+    probe_opts = {**base, "skip_download": True}
     with yt_dlp.YoutubeDL(probe_opts) as y:
         vid = y.extract_info(url, download=False)["id"]
     d = video_dir(vid)
@@ -42,7 +48,7 @@ def ingest(url: str, max_height: int = 1080, max_comments: int = 300) -> dict:
         return json.loads(meta_path.read_text())
 
     opts = {
-        "quiet": True, "no_warnings": True, "noplaylist": True,
+        **base,
         "format": f"bv*[height<={max_height}][vcodec^=avc1]+ba[ext=m4a]/"
                   f"bv*[height<={max_height}]+ba/b[height<={max_height}]/b",
         "merge_output_format": "mp4",

@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     judge_model: str = "claude-sonnet-5-5"
     gemini_model: str = "gemini-2.5-flash"
 
+    # Optional Netscape-format cookies file for yt-dlp. YouTube blocks most cloud server IPs
+    # unless the request carries cookies from a logged-in browser.
+    ytdlp_cookies_file: str = ""
+
     # Caption font must be installed on the machine: Arial Black on macOS, Roboto Black on Linux.
     caption_font: str = "Arial Black" if sys.platform == "darwin" else "Roboto Black"
 
