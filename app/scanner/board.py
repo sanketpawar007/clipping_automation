@@ -71,8 +71,19 @@ def parse_campaign(html: str, campaign_id: str) -> dict | None:
                 "payout_model": cfg.get("payoutModel") or [],
                 "metrics": data.get("metrics") or {},
                 "brief_counts": data.get("briefCounts") or {},
+                "top_clips": top_clips(text),
             }
     return None
+
+
+def top_clips(text: str) -> list[dict]:
+    """The campaign's best-performing submissions: platform, title and views."""
+    for arr in _decode_after(text, '"topClips":'):
+        if isinstance(arr, list) and arr:
+            return [{"platform": c.get("platform"), "title": c.get("title"),
+                     "views": c.get("totalViews"), "url": c.get("postUrl"), "rank": c.get("rank")}
+                    for c in arr if isinstance(c, dict)]
+    return []
 
 
 def fetch_board() -> list[dict]:

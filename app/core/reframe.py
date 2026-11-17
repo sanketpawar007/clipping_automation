@@ -19,7 +19,7 @@ from app.config import ROOT, get_settings
 OUT_W, OUT_H = 1080, 1920
 MODEL = ROOT / "assets/models/face_detection_yunet_2023mar.onnx"
 SAMPLE_FPS = 2
-DET_W = 640
+DET_W = 960
 
 
 def _sample_faces(src: str | Path, start: float, end: float, w: int, h: int) -> list[list[tuple]]:
@@ -31,7 +31,7 @@ def _sample_faces(src: str | Path, start: float, end: float, w: int, h: int) -> 
          "-pix_fmt", "bgr24", "-"], capture_output=True)
     frame_bytes = DET_W * det_h * 3
     n = len(p.stdout) // frame_bytes
-    det = cv2.FaceDetectorYN.create(str(MODEL), "", (DET_W, det_h), 0.7, 0.3, 50)
+    det = cv2.FaceDetectorYN.create(str(MODEL), "", (DET_W, det_h), 0.6, 0.3, 50)
     out = []
     for i in range(n):
         frame = np.frombuffer(p.stdout, np.uint8, frame_bytes, i * frame_bytes).reshape(det_h, DET_W, 3)

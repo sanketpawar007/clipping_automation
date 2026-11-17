@@ -43,20 +43,23 @@ def main() -> int:
             console.print(f"[red]FAIL[/] {name}: {type(exc).__name__}: {str(exc)[:500]}", highlight=False)
 
     def recall() -> str:
-        state["cands"] = llm.recall(transcript.render_for_llm(sents), camp, duration, want=8)
-        assert state["cands"], "no candidates returned"
-        return f"{len(state['cands'])} candidates, e.g. {state['cands'][0].hook!r}"
+        found = llm.recall(transcript.render_for_llm(sents), camp, duration, want=8)
+        assert found and found.candidates, "no candidates returned"
+        state["cands"] = found.candidates
+        return (f"{len(found.candidates)} candidates + {len(found.supercuts)} supercuts, "
+                f"e.g. {found.candidates[0].hook!r}")
 
     def judge() -> str:
         picks = [(c.start_line, c.end_line) for c in state["cands"][:4]] or [(10, 20)]
-        windows = [select.Window(i, a, b, "llm") for i, (a, b) in enumerate(picks)]
+        windows = [select.Window(i, [(a, b)], "llm") for i, (a, b) in enumerate(picks)]
         for w in windows:
             select.snap(w, sents, camp, duration)
             w.signals = {"loudness": 0.5}
         verdicts = llm.judge([select.judge_block(w, sents) for w in windows], camp)
         assert verdicts, "no verdicts returned"
         v = next(iter(verdicts.values()))
-        return f"{len(verdicts)} verdicts, hook {v.hook_score}/10, caption {v.caption_hook!r}"
+        return (f"{len(verdicts)} verdicts, hook {v.hook_score}/10, headline {v.headline!r}, "
+                f"caption {v.caption_hook!r}")
 
     def gemini() -> str:
         start = min(200.0, max(0.0, duration - 40))

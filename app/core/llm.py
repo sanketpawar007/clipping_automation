@@ -28,8 +28,21 @@ class Candidate(BaseModel):
     style: str = Field(description="humour | big_reaction | truth_bomb | story | debate | other")
 
 
+class Part(BaseModel):
+    start_line: int
+    end_line: int
+
+
+class SupercutCandidate(BaseModel):
+    theme: str = Field(description="The question or topic every part answers, under 12 words")
+    parts: list[Part] = Field(description="The answers to stitch together, in the best viewing order")
+    hook: str = Field(description="What makes this compilation watchable, in under 12 words")
+
+
 class RecallResult(BaseModel):
     candidates: list[Candidate]
+    supercuts: list[SupercutCandidate] = Field(
+        description="Compilations of several short answers on one theme. Empty if not asked for.")
 
 
 RECALL_SYSTEM = """You find moments in long videos that would work as short vertical clips \
@@ -52,10 +65,16 @@ def _client() -> anthropic.Anthropic | None:
     return anthropic.Anthropic(api_key=key) if key else None
 
 
-def recall(transcript: str, campaign: Campaign, duration_s: float, want: int = 30) -> list[Candidate]:
+def _brief(campaign: Campaign) -> str:
+    b = campaign.editing.brief.strip()
+    return f"\n<campaign_cutting_brief>\n{b}\n</campaign_cutting_brief>\n" if b else ""
+
+
+def recall(transcript: str, campaign: Campaign, duration_s: float,
+           want: int = 30) -> RecallResult | None:
     client = _client()
     if client is None:
-        return []
+        return None
     s = get_settings()
     lim = campaign.clip
     prompt = (
@@ -63,14 +82,26 @@ def recall(transcript: str, campaign: Campaign, duration_s: float, want: int = 3
         f"Campaign: {campaign.name}. Preferred styles: {campaign.preferences.get('styles', 'any')}.\n"
         f"The video is {duration_s / 60:.0f} minutes long. Each clip should run "
         f"{lim.min_seconds:.0f}-{lim.max_seconds:.0f} seconds (timestamps are at the start of "
-        f"each line). Return up to {want} candidates, spread across the whole video.")
+        f"each line). Return up to {want} candidates, spread across the whole video."
+        + _brief(campaign))
+    sc = campaign.editing.supercut
+    if sc.enabled:
+        prompt += (
+            f"\nAlso propose up to 6 supercuts: {sc.min_parts}-{sc.max_parts} short parts from "
+            "different places in the video that answer the same question or make the same point "
+            "from different angles, ideally from different speakers. Each part should be the "
+            "sharpest 5-20 seconds of that answer and make sense on its own. Open with the "
+            f"strongest part. The whole supercut must fit in {lim.max_seconds:.0f} seconds. "
+            "Only propose one where the video truly has several strong takes on one theme.")
+    else:
+        prompt += "\nLeave supercuts empty."
     resp = client.messages.parse(
         model=s.recall_model, max_tokens=16000, system=RECALL_SYSTEM,
         messages=[{"role": "user", "content": prompt}], output_format=RecallResult)
     if resp.stop_reason == "refusal" or resp.parsed_output is None:
         console.print(f"[yellow]recall pass returned nothing ({resp.stop_reason})[/]")
-        return []
-    return resp.parsed_output.candidates
+        return None
+    return resp.parsed_output
 
 
 # ---------- judge ----------
@@ -84,7 +115,17 @@ class Verdict(BaseModel):
     campaign_fit_score: int = Field(description="0-10: fit with the campaign's preferred styles")
     start_line: int = Field(description="Best first line, tightened if the setup drags")
     end_line: int = Field(description="Best last line, ending on the payoff")
+    cold_open_line: int = Field(
+        description="Line number of the single most arresting line inside the clip, to replay as "
+                    "a 1-4 second teaser before the clip starts. -1 if the clip already opens on "
+                    "its strongest line or no line works out of context.")
+    headline: str = Field(
+        description="On-screen title shown for the whole clip, under 40 characters. It tells a "
+                    "viewer with the sound off why to keep watching, without giving away the payoff.")
     caption_hook: str = Field(description="One caption line for the post, under 60 characters")
+    caption_question: str = Field(
+        description="A short question to end the caption that makes viewers want to reply, "
+                    "under 50 characters")
     reason: str = Field(description="One sentence: why this works or does not")
     ad_like: bool = Field(description="True if the clip reads like an advert or sponsor read")
     spoiler: bool = Field(description="True if it reveals a story spoiler for a game, film or show")
@@ -104,12 +145,25 @@ seconds fails no matter how good the ending is, because viewers have already swi
 
 You may tighten a candidate by moving its start or end line within the lines you are shown. \
 Move the start forward to open on the strongest line; end on the payoff. Keep each clip inside \
-the campaign's length limits. The caption hook should tease the moment in the creator's voice \
-without giving away the payoff, and without hashtags or @mentions (those are added later)."""
+the campaign's length limits. End every clip on its payoff: the punchline, the reaction or \
+the strongest statement, never the trailing chatter after it. The caption hook should tease \
+the moment in the creator's voice without giving away the payoff, and without hashtags or \
+@mentions (those are added later)."""
 
 
-def judge(blocks: list[dict], campaign: Campaign) -> dict[int, Verdict]:
-    """blocks: [{id, lines (numbered text incl. a little context), seconds, signals}]."""
+def _winning(top_clips: list[dict]) -> str:
+    if not top_clips:
+        return ""
+    rows = "\n".join(f"- {c['views']:,} views ({c['platform']}): {(c['title'] or '').strip()[:220]}"
+                     for c in top_clips[:10] if c.get("views"))
+    return ("\n<top_clips_on_this_campaign>\nThese are the best-performing clips other clippers "
+            "have posted for this same campaign, with their captions. Use them as evidence of which "
+            "topics, angles and caption styles this audience rewards. Do not copy them.\n"
+            f"{rows}\n</top_clips_on_this_campaign>\n")
+
+
+def judge(blocks: list[dict], campaign: Campaign, top_clips: list[dict] | None = None) -> dict[int, Verdict]:
+    """blocks: [{id, kind, lines (numbered text incl. a little context), seconds, signals}]."""
     client = _client()
     if client is None or not blocks:
         return {}
@@ -117,7 +171,7 @@ def judge(blocks: list[dict], campaign: Campaign) -> dict[int, Verdict]:
     parts = []
     for b in blocks:
         sig = ", ".join(f"{k} {v:.2f}" for k, v in b["signals"].items())
-        parts.append(f'<candidate id="{b["id"]}" seconds="{b["seconds"]:.0f}" '
+        parts.append(f'<candidate id="{b["id"]}" kind="{b["kind"]}" seconds="{b["seconds"]:.0f}" '
                      f'audience_signals="{sig}">\n{b["lines"]}\n</candidate>')
     lim = campaign.clip
     prompt = (
@@ -127,7 +181,13 @@ def judge(blocks: list[dict], campaign: Campaign) -> dict[int, Verdict]:
         "Audience signals are 0-1: heatmap is YouTube's most-replayed graph, comments are "
         "viewer timestamp mentions, loudness is audio peaks such as laughter. Lines marked "
         "(context) are outside the candidate but may be pulled in.\n"
-        "Return one verdict per candidate.")
+        "A supercut is several parts stitched in order; score it as one clip and leave its "
+        "start_line, end_line and cold_open_line as given (-1 for cold_open_line)."
+        + (f" Headline style for this campaign: {campaign.editing.headline.style}."
+           if campaign.editing.headline.style else "")
+        + _brief(campaign)
+        + (_winning(top_clips or []) if campaign.editing.learn_from_top_clips else "")
+        + "\nReturn one verdict per candidate.")
     resp = client.beta.messages.parse(
         model=s.judge_model, max_tokens=16000, system=JUDGE_SYSTEM,
         messages=[{"role": "user", "content": prompt}], output_format=JudgeResult,

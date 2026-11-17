@@ -1,10 +1,12 @@
-"""Cuts one clip: reframe to 9:16, burn captions, add campaign overlays, encode."""
+"""Renders one clip: stitch its segments, reframe to 9:16, cut dead air, burn captions and
+the headline, add campaign overlays, encode. Everything happens in a single ffmpeg run."""
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from app.config import ROOT, get_settings
-from app.core import captions, media, reframe
+from app.core import captions, edit, media, reframe
 from app.rules.campaign import Campaign
 
 WM_WIDTH = 460
@@ -13,28 +15,82 @@ WM_POS = {
     "bottom_right": "W-w-40:H-h-420", "bottom_left": "40:H-h-420",
     "top_center": "(W-w)/2:150",
 }
+SEAM_MARGIN = reframe.OUT_H - 760 - 60     # caption position when a facecam panel is on top
 
 
 def _esc(path: Path) -> str:
     return str(path).replace("\\", "\\\\").replace(":", "\\:").replace("'", "\\'")
 
 
-def render_clip(src: str | Path, start: float, end: float, words: list[dict], out: Path,
-                campaign: Campaign, profile: dict | None = None, with_captions: bool = True) -> dict:
+def _relabel(graph: str, i: int) -> str:
+    """Makes one segment's reframe filter use input `i` and labels that cannot clash."""
+    graph = graph.replace("[0:v]", f"[{i}:v]")
+    return re.sub(r"\[(a|b|bg|fg|top|bot|v)\]", lambda m: f"[{m.group(1)}{i}]", graph)
+
+
+def render_clip(src: str | Path, segs: list[tuple[float, float]], words: list[dict],
+                out: Path, campaign: Campaign, profile: dict | None = None,
+                with_captions: bool = True, headline: str = "") -> dict:
+    """`segs` are source-time segments played in order (one for a plain clip, several for a
+    supercut or a cold open)."""
     s = get_settings()
     info = media.probe(src)
-    vf, layout = reframe.build_filter(src, start, end, info["width"], info["height"], profile)
-    chain, last = [vf], "v"
-    inputs = ["-ss", f"{start:.3f}", "-to", f"{end:.3f}", "-i", str(src)]
+    fps = 60 if info["fps"] > 45 else 30
+    ed = campaign.editing
     out.parent.mkdir(parents=True, exist_ok=True)
 
-    if with_captions and words:
-        # with facecam on top, captions sit on the seam between the two panels
-        margin = OUT_SEAM if layout == "facecam_top" else 560
-        ass = captions.write_ass(words, start, end, out.with_suffix(".ass"),
-                                 font=s.caption_font, margin_v=margin)
-        chain.append(f"[{last}]ass=filename='{_esc(ass)}'[c]")
-        last = "c"
+    kept = edit.keep_intervals(words, segs, ed.tighten, fps)
+    inputs: list[str] = []
+    chain: list[str] = []
+    layouts: list[str] = []
+    offsets: list[float] = []
+    total = 0.0
+    for i, (a, b) in enumerate(segs):
+        frames = edit.seg_frames((a, b), fps)
+        dur = frames / fps
+        inputs += ["-ss", f"{a:.3f}", "-t", f"{dur + 0.5:.3f}", "-i", str(src)]
+        vf, layout = reframe.build_filter(src, a, b, info["width"], info["height"], profile)
+        layouts.append(layout)
+        chain.append(_relabel(vf, i))
+        chain.append(f"[v{i}]fps={fps},trim=end_frame={frames},setpts=PTS-STARTPTS[f{i}]")
+        chain.append(f"[{i}:a]aresample=44100,apad,atrim=duration={dur:.5f},asetpts=PTS-STARTPTS[s{i}]")
+        offsets.append(total)
+        total += dur
+
+    n = len(segs)
+    if n > 1:
+        chain.append("".join(f"[f{i}][s{i}]" for i in range(n)) + f"concat=n={n}:v=1:a=1[cv][ca]")
+        vlast, alast = "cv", "ca"
+    else:
+        vlast, alast = "f0", "s0"
+
+    # Jump cuts: keep only the worthwhile pieces of the stitched timeline.
+    pieces = [(offsets[i] + (ps - segs[i][0]), offsets[i] + (pe - segs[i][0]))
+              for i, ps_list in enumerate(kept) for ps, pe in ps_list]
+    kept_total = sum(e - a for a, e in pieces)
+    tightened = kept_total < total - 0.2 and len(pieces) > 0
+    if tightened:
+        eps = 0.5 / fps
+        expr = "+".join(f"gte(t,{a - eps:.4f})*lt(t,{e - eps:.4f})" for a, e in pieces)
+        chain.append(f"[{vlast}]select='{expr}',setpts=N/{fps}/TB[tv]")
+        k = len(pieces)
+        chain.append(f"[{alast}]asplit={k}" + "".join(f"[x{j}]" for j in range(k)))
+        for j, (a, e) in enumerate(pieces):
+            chain.append(f"[x{j}]atrim=start={a:.5f}:end={e:.5f},asetpts=PTS-STARTPTS[y{j}]")
+        chain.append("".join(f"[y{j}]" for j in range(k)) + f"concat=n={k}:v=0:a=1[ta]")
+        vlast, alast = "tv", "ta"
+    else:
+        kept = [[seg] for seg in segs]
+
+    out_words, out_dur = edit.remap_words(words, kept)
+    show_headline = bool(headline) and ed.headline.enabled
+    if (with_captions and out_words) or show_headline:
+        margin = SEAM_MARGIN if "facecam_top" in layouts else 560
+        ass = captions.write_ass(out_words if with_captions else [], 0.0, out_dur,
+                                 out.with_suffix(".ass"), font=s.caption_font, margin_v=margin,
+                                 headline=headline if show_headline else "")
+        chain.append(f"[{vlast}]ass=filename='{_esc(ass)}'[c]")
+        vlast = "c"
 
     wm = campaign.overlays.watermark
     wm_applied = False
@@ -44,17 +100,15 @@ def render_clip(src: str | Path, start: float, end: float, words: list[dict], ou
             raise FileNotFoundError(f"Watermark image missing: {wm_path}")
         inputs += ["-i", str(wm_path)]
         pos = WM_POS.get(wm.position, WM_POS["top_right"])
-        chain.append(f"[1:v]format=rgba,colorchannelmixer=aa={wm.opacity},scale={WM_WIDTH}:-1[wm]")
-        chain.append(f"[{last}][wm]overlay={pos}[o]")
-        last, wm_applied = "o", True
+        chain.append(f"[{n}:v]format=rgba,colorchannelmixer=aa={wm.opacity},scale={WM_WIDTH}:-1[wm]")
+        chain.append(f"[{vlast}][wm]overlay={pos}[o]")
+        vlast, wm_applied = "o", True
 
-    out.parent.mkdir(parents=True, exist_ok=True)
     media.run([s.ffmpeg, "-y", "-v", "error", *inputs, "-filter_complex", ";".join(chain),
-               "-map", f"[{last}]", "-map", "0:a?", "-c:v", "libx264", "-preset", "veryfast",
+               "-map", f"[{vlast}]", "-map", f"[{alast}]", "-c:v", "libx264", "-preset", "veryfast",
                "-crf", "21", "-maxrate", "5M", "-bufsize", "10M", "-pix_fmt", "yuv420p",
-               "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-movflags", "+faststart", str(out)])
-    return {"layout": layout, "watermark": wm_applied, "captions": with_captions and bool(words),
+               "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", str(out)])
+    return {"layout": "+".join(dict.fromkeys(layouts)), "watermark": wm_applied,
+            "captions": with_captions and bool(out_words), "headline": show_headline,
+            "parts": n, "cut_seconds": round(total - kept_total, 1) if tightened else 0.0,
             "duration": media.probe(out)["duration"]}
-
-
-OUT_SEAM = reframe.OUT_H - 760 - 60

@@ -3,8 +3,11 @@
   <div>
     <h2>#{{ c.id }} · {{ c.hook }}</h2>
     <div class="meta">
-      {{ c.campaign }} · score <b>{{ '%.2f'|format(c.score) }}</b> · {{ (c.end - c.start)|round|int }}s
+      {{ c.campaign }} · <b>{{ c.kind or 'single' }}</b>{% if c.sig.get('parts', 1) > 1 %} ({{ c.sig.parts }} parts){% endif %}
+      · score <b>{{ '%.2f'|format(c.score) }}</b> · {{ c.seconds|round|int }}s
       · {{ c.sig.get('layout', '') }} · found by {{ c.sig.get('source', '') }}
+      {% if c.views is not none %} · <b>{{ '{:,}'.format(c.views) }}</b> views{% endif %}
+      {% if c.headline %}<br>On-screen headline: <b>{{ c.headline }}</b>{% endif %}
       {% if c.spoiler %} · <b>spoiler</b>{% endif %}
       {% if c.submit_by %} · submit by <b>{{ c.submit_by|hhmm }}</b>{% endif %}
       <br>{{ c.video_title }}
@@ -32,8 +35,10 @@
                 hx-swap="outerHTML" {{ 'disabled' if not c.compliant }}>Approve and send to phone</button>
         <button hx-post="/clips/{{ c.id }}/reject" hx-target="#clip-{{ c.id }}" hx-swap="outerHTML">Reject</button>
       {% elif c.status == 'approved' %}
-        <button class="primary" hx-post="/clips/{{ c.id }}/posted" hx-target="#clip-{{ c.id }}"
-                hx-swap="outerHTML">Mark posted (start submit timer)</button>
+        <form hx-post="/clips/{{ c.id }}/posted" hx-target="#clip-{{ c.id }}" hx-swap="outerHTML" class="row">
+          <input type="url" name="post_url" placeholder="Link to the post (optional, for view tracking)" aria-label="Post link">
+          <button class="primary" type="submit">Mark posted (start submit timer)</button>
+        </form>
         <button hx-post="/clips/{{ c.id }}/reject" hx-target="#clip-{{ c.id }}" hx-swap="outerHTML">Reject</button>
       {% endif %}
     </div>

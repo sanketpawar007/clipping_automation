@@ -6,11 +6,14 @@ import re
 from app.rules.campaign import Campaign
 
 
-def build_caption(campaign: Campaign, hook: str, index: int = 0) -> str:
-    """Rotates through the campaign's templates so posts do not all look identical."""
+def build_caption(campaign: Campaign, hook: str, index: int = 0, question: str = "") -> str:
+    """Rotates through the campaign's templates so posts do not all look identical.
+    Templates may use {hook}, {question} (an engagement question) and {hashtags}."""
     templates = campaign.caption.templates or ["{hook}\n{hashtags}"]
     template = templates[index % len(templates)]
-    return template.format(hook=hook.strip(), hashtags=" ".join(campaign.caption.hashtags)).strip()
+    text = template.format(hook=hook.strip(), question=(question or "Agree or disagree?").strip(),
+                           hashtags=" ".join(campaign.caption.hashtags))
+    return "\n".join(line for line in text.split("\n") if line.strip()).strip()
 
 
 def pinned_comment(campaign: Campaign, index: int = 0) -> str:

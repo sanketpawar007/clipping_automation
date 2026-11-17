@@ -1,11 +1,38 @@
 id: 705f6e21-38af-408c-9e55-c77e4611bf09
 name: Let Him Mansplain
+niche: podcast
 accounts: {youtube: lhmtruthbombs, instagram: lhmtruthbombs}
 platforms: [instagram, youtube]
 sources: ["https://www.youtube.com/@lethimmansplain"]
 payout_cpm: {instagram: 1.00, youtube: 0.50}
+
+# ---- How to cut clips for THIS campaign (the engine is shared, these settings are not) ----
+editing:
+  # Plain-language instructions from the campaign brief. The AI reads this when it picks
+  # and judges moments. Edit freely; no code change needed.
+  brief: |
+    Let Him Mansplain is a weekly podcast where host Lily Kate asks men honest questions
+    about dating and marriage from a Christian point of view, to help women find good men.
+    Preferred styles, in the campaign's own words: humorous clips, big reaction clips,
+    truth bomb clips and supercut style videos.
+    Using two or more guests in a clip to show a variety of answers is highly encouraged.
+    Clips must grow awareness of the show and must never look like an advert.
+    The clip has to hold a 0.8% engagement rate, so prefer moments people will argue
+    about in the comments: a blunt opinion, a surprising admission, a funny disagreement.
+    Viewers are mostly women curious about how men think, and men who feel seen.
+  candidates: 10               # clips offered per episode; you approve the best few
+  supercut: {enabled: true, min_parts: 2, max_parts: 4}
+  tighten: {enabled: true, max_pause: 0.45, keep_pause: 0.18, remove_fillers: true}
+  headline:
+    enabled: true
+    style: "a question or bold claim in plain words, e.g. 'Asked men: why won't you commit?'"
+  cold_open: true
+  end_on_payoff: true
+  learn_from_top_clips: true   # judge sees the campaign's best-performing clips
+
 overlays:
   watermark:
+    # Replace this file with the official "LHM Logo" from the campaign brief when you have it.
     image: assets/lhm_watermark.png
     text: "@lethimmansplain"
     position: top_right
@@ -14,14 +41,20 @@ overlays:
 caption:
   first_line_must_contain: "@lethimmansplain"
   hashtags: ["#lethimmansplain", "#hottakes", "#podcast"]
+  # {hook} and {question} are written by the AI for each clip.
   templates:
-    - "Full episode on @lethimmansplain\n{hook}\n{hashtags}"
-    - "{hook} @lethimmansplain\nAgree or disagree? 👇\n{hashtags}"
+    - "Full episode on @lethimmansplain\n{hook}\n{question} 👇\n{hashtags}"
+    - "{hook} @lethimmansplain\n{question} 👇\n{hashtags}"
+    - "Unpopular opinion incoming… @lethimmansplain\n{hook}\n{question} 👇\n{hashtags}"
 pinned_comment:
-  platforms: [instagram]
+  platforms: [instagram]        # the brief says Instagram and TikTok only, never YouTube
   replies:
     - "Full episode on YouTube @lethimmansplain 🔗"
+    - "It's Let Him Mansplain! Full episode on @lethimmansplain"
     - "Full episode linked in bio 🔗"
+    - "That's Lily Kate! Catch the whole convo on @lethimmansplain"
+    - "The full episode is on YouTube @lethimmansplain 👀"
+    - "You gotta hear the rest. Full episode on @lethimmansplain"
 preferences:
   multi_guest: true
   styles: [humour, big_reaction, truth_bomb, supercut]

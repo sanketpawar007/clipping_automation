@@ -17,6 +17,7 @@ ScaledBorderAndShadow: yes
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: Cap,{font},{size},&H00FFFFFF,&H00FFFFFF,&H00000000,&H96000000,-1,0,0,0,100,100,0,0,1,7,3,2,60,60,{margin_v},1
+Style: Head,{font},60,&H00101010,&H00101010,&H00FFFFFF,&H00FFFFFF,-1,0,0,0,100,100,0,0,3,18,0,2,70,70,{head_margin},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -52,11 +53,32 @@ def chunk(words: list[dict]) -> list[list[dict]]:
     return groups
 
 
+def wrap_headline(text: str, width: int = 24, max_lines: int = 2) -> str:
+    """Breaks the headline into at most two balanced lines (ASS uses \\N for a line break)."""
+    words, lines = _strip(text).split(), [""]
+    for w in words:
+        if lines[-1] and len(lines[-1]) + 1 + len(w) > width and len(lines) < max_lines:
+            lines.append(w)
+        else:
+            lines[-1] = f"{lines[-1]} {w}".strip()
+    return "\\N".join(lines)
+
+
+def _strip(text: str) -> str:
+    return re.sub(r"[{}\\\n]", " ", text).strip()
+
+
 def write_ass(words: list[dict], clip_start: float, clip_end: float, path: Path,
-              font: str = "Arial Black", size: int = 86, margin_v: int = 560) -> Path:
-    """`words` use source-video times; captions are written relative to the clip start."""
+              font: str = "Arial Black", size: int = 86, margin_v: int = 560,
+              headline: str = "") -> Path:
+    """`words` use source-video times; captions are written relative to the clip start.
+    `headline` is shown for the whole clip: black text on a white box."""
     inside = [w for w in words if w["end"] > clip_start and w["start"] < clip_end]
-    lines = [HEADER.format(font=font, size=size, margin_v=margin_v)]
+    # the headline sits just above the captions, clear of faces at the top of the frame
+    lines = [HEADER.format(font=font, size=size, margin_v=margin_v, head_margin=margin_v + 150)]
+    if headline:
+        lines.append(f"Dialogue: 1,{_ts(0)},{_ts(clip_end - clip_start)},Head,,0,0,0,,"
+                     f"{wrap_headline(headline)}\n")
     groups = chunk(inside)
     for gi, group in enumerate(groups):
         group_end = min(group[-1]["end"] + 0.25,

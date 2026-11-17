@@ -51,12 +51,31 @@ CREATE TABLE IF NOT EXISTS clips (
 """
 
 
+# Columns added after the first release: (table, column, type). Applied to existing databases.
+MIGRATIONS = [
+    ("clips", "kind", "TEXT DEFAULT 'single'"),
+    ("clips", "headline", "TEXT"),
+    ("clips", "segments", "TEXT"),          # JSON [[start, end], ...] in source time
+    ("clips", "post_url", "TEXT"),
+    ("clips", "views", "INTEGER"),
+    ("clips", "views_checked_at", "REAL"),
+]
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    for table, column, kind in MIGRATIONS:
+        have = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+        if column not in have:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {kind}")
+
+
 @contextmanager
 def connect() -> Iterator[sqlite3.Connection]:
     conn = sqlite3.connect(get_settings().db_path, timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.executescript(SCHEMA)
+    _migrate(conn)
     try:
         yield conn
         conn.commit()

@@ -45,6 +45,36 @@ class ClipLimits(BaseModel):
     max_seconds: float = 75
 
 
+class Supercut(BaseModel):
+    enabled: bool = False
+    min_parts: int = 2
+    max_parts: int = 4
+
+
+class Tighten(BaseModel):
+    enabled: bool = True
+    max_pause: float = 0.45         # silences longer than this are cut out
+    keep_pause: float = 0.18        # how much of each silence stays, so speech sounds natural
+    remove_fillers: bool = True     # drop stand-alone "um", "uh"
+
+
+class Headline(BaseModel):
+    enabled: bool = True
+    style: str = ""                 # e.g. 'Asked men: <question>?'. Guidance for the AI writer.
+
+
+class Editing(BaseModel):
+    """How clips are cut for this campaign. The engine is shared; these switches are not."""
+    brief: str = ""                 # plain-language cutting instructions, given to the AI passes
+    candidates: int = 10            # clips offered for review per video
+    supercut: Supercut = Field(default_factory=Supercut)
+    tighten: Tighten = Field(default_factory=Tighten)
+    headline: Headline = Field(default_factory=Headline)
+    cold_open: bool = True          # open on the strongest line, then play the moment
+    end_on_payoff: bool = True      # never pad a clip past its punchline
+    learn_from_top_clips: bool = True
+
+
 class Campaign(BaseModel):
     slug: str = ""
     id: str = ""
@@ -59,6 +89,7 @@ class Campaign(BaseModel):
     pinned_comment: PinnedComment = Field(default_factory=PinnedComment)
     preferences: dict = {}
     clip: ClipLimits = Field(default_factory=ClipLimits)
+    editing: Editing = Field(default_factory=Editing)
     forbid: list[str] = []                    # e.g. ad_like, stolen_clip, watermark, spoilers
     banned_words: list[str] = []
     profile: str | None = None                # profiles/<name>.yaml layout for streamers

@@ -33,6 +33,7 @@ def _clip(conn, clip_id: int) -> dict:
     d["report"] = db.loads(d["rule_report"], [])
     d["sig"] = db.loads(d["signals"], {})
     d["compliant"] = check.compliant(d["report"])
+    d["seconds"] = d["sig"].get("duration") or (d["end"] - d["start"])
     return d
 
 
@@ -73,7 +74,7 @@ def save_caption(request: Request, clip_id: int, caption: str = Form(...)):
         clip = _clip(conn, clip_id)
         camp = campaigns.load(clip["campaign"])
         render = {"watermark": any(r["rule"] == "watermark" and r["ok"] for r in clip["report"])}
-        report = check.check(camp, caption=caption, duration=clip["end"] - clip["start"],
+        report = check.check(camp, caption=caption, duration=clip["seconds"],
                              render=render, clip_text=clip["sig"].get("text", ""),
                              ad_like=any(r["rule"] == "not ad-like" and not r["ok"] for r in clip["report"]),
                              spoiler=bool(clip["spoiler"]))
@@ -121,8 +122,10 @@ def reject(request: Request, clip_id: int):
 
 
 @app.post("/clips/{clip_id}/posted", response_class=HTMLResponse)
-async def posted(request: Request, clip_id: int):
+async def posted(request: Request, clip_id: int, post_url: str = Form("")):
     with db.connect() as conn:
+        if post_url.strip():
+            conn.execute("UPDATE clips SET post_url=? WHERE id=?", (post_url.strip(), clip_id))
         clip = _clip(conn, clip_id)
         camp = campaigns.load(clip["campaign"])
         deadline = db.now() + camp.submit_within_minutes * 60

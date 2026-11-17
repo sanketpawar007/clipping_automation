@@ -42,11 +42,37 @@ def campaigns(top: int = 15, category: str = typer.Option("", help="Filter, e.g.
 
 @app.command()
 def clip(url: str, campaign: str = typer.Option(..., "--campaign", "-c", help="campaigns/<name>.yaml"),
-         n: int = typer.Option(6, help="How many clips to make."),
+         n: int = typer.Option(0, help="How many clips to make (0 = the campaign's setting)."),
          no_captions: bool = typer.Option(False, help="Skip burned-in captions.")) -> None:
     """Turn one video URL into ready-to-review clips for a campaign."""
     from app import pipeline
-    pipeline.run(url, campaign, n_clips=n, with_captions=not no_captions)
+    pipeline.run(url, campaign, n_clips=n or None, with_captions=not no_captions)
+
+
+@app.command()
+def track() -> None:
+    """Record current view counts for posted clips (YouTube links only for now)."""
+    import yt_dlp
+
+    from app import db
+    with db.connect() as conn:
+        rows = conn.execute("SELECT id, post_url FROM clips WHERE status='posted' "
+                            "AND post_url LIKE '%youtu%'").fetchall()
+    if not rows:
+        console.print("No posted clips with a YouTube link yet. Paste the link when you mark a clip posted.")
+        return
+    for r in rows:
+        try:
+            with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True, "skip_download": True}) as y:
+                views = y.extract_info(r["post_url"], download=False).get("view_count")
+        except Exception as exc:  # noqa: BLE001
+            console.print(f"clip #{r['id']}: could not read views ({str(exc)[:80]})")
+            continue
+        with db.connect() as conn:
+            conn.execute("UPDATE clips SET views=?, views_checked_at=? WHERE id=?",
+                         (views, db.now(), r["id"]))
+        shown = f"{views:,} views" if views is not None else "no count"
+        console.print(f"clip #{r['id']}: {shown}")
 
 
 @app.command("telegram-id")
