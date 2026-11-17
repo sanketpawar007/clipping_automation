@@ -9,7 +9,6 @@ from app.config import ROOT, get_settings
 from app.core import captions, edit, media, reframe
 from app.rules.campaign import Campaign
 
-WM_WIDTH = 460
 WM_POS = {
     "top_right": "W-w-40:150", "top_left": "40:150",
     "bottom_right": "W-w-40:H-h-420", "bottom_left": "40:H-h-420",
@@ -102,7 +101,7 @@ def render_clip(src: str | Path, segs: list[tuple[float, float]], words: list[di
             raise FileNotFoundError(f"Watermark image missing: {wm_path}")
         inputs += ["-i", str(wm_path)]
         pos = WM_POS.get(wm.position, WM_POS["top_right"])
-        chain.append(f"[{n}:v]format=rgba,colorchannelmixer=aa={wm.opacity},scale={WM_WIDTH}:-1[wm]")
+        chain.append(f"[{n}:v]format=rgba,colorchannelmixer=aa={wm.opacity},scale={wm.width}:-1[wm]")
         chain.append(f"[{vlast}][wm]overlay={pos}[o]")
         vlast, wm_applied = "o", True
 

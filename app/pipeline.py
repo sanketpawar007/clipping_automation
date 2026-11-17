@@ -200,3 +200,37 @@ def run(url: str, campaign_slug: str, n_clips: int | None = None, with_captions:
         with db.connect() as conn:
             conn.execute("UPDATE videos SET status='failed', error=? WHERE id=?", (str(exc)[:500], video_row))
         raise
+
+
+def rerender(status: str = "pending") -> int:
+    """Renders existing clips again with the current settings (watermark, headline, pacing).
+    The AI's choices are kept; only the video file is rebuilt, so this costs nothing."""
+    import json
+    from pathlib import Path
+    with db.connect() as conn:
+        rows = [dict(r) for r in conn.execute(
+            "SELECT c.*, v.path AS src FROM clips c JOIN videos v ON v.id=c.video_id "
+            "WHERE c.status=? AND c.segments IS NOT NULL ORDER BY c.id", (status,))]
+    done = 0
+    for r in rows:
+        camp = campaigns.load(r["campaign"])
+        words_path = Path(r["src"]).parent / "words.json"
+        if not words_path.exists() or not Path(r["src"]).exists():
+            console.print(f"[yellow]clip #{r['id']}: source files missing, skipped[/]")
+            continue
+        segs = [tuple(x) for x in db.loads(r["segments"], [])]
+        out = render.render_clip(r["src"], segs, json.loads(words_path.read_text()), Path(r["path"]),
+                                 camp, campaigns.load_profile(camp.profile), True, r["headline"] or "")
+        sig = db.loads(r["signals"], {})
+        report = check.check(camp, caption=r["caption"], duration=out["duration"], render=out,
+                             clip_text=sig.get("text", ""), spoiler=bool(r["spoiler"]),
+                             ad_like=any(x["rule"] == "not ad-like" and not x["ok"]
+                                         for x in db.loads(r["rule_report"], [])))
+        sig.update(duration=out["duration"], cut_seconds=out["cut_seconds"], layout=out["layout"])
+        with db.connect() as conn:
+            conn.execute("UPDATE clips SET rule_report=?, signals=? WHERE id=?",
+                         (db.dumps(report), db.dumps(sig), r["id"]))
+        ok = "[green]compliant[/]" if check.compliant(report) else "[red]rule issues[/]"
+        console.print(f"clip #{r['id']}: {out['duration']:.0f}s  {ok}")
+        done += 1
+    return done

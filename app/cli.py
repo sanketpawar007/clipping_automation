@@ -52,6 +52,13 @@ def clip(url: str, campaign: str = typer.Option(..., "--campaign", "-c", help="c
 
 
 @app.command()
+def rerender(status: str = typer.Option("pending", help="Which clips: pending, approved...")) -> None:
+    """Rebuild existing clips with the current watermark, headline and pacing settings (no AI cost)."""
+    from app import pipeline
+    console.print(f"Re-rendered {pipeline.rerender(status)} clip(s).")
+
+
+@app.command()
 def track() -> None:
     """Record current view counts for posted clips (YouTube links only for now)."""
     import yt_dlp

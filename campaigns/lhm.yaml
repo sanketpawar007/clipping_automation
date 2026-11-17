@@ -32,8 +32,9 @@ editing:
 
 overlays:
   watermark:
-    # Replace this file with the official "LHM Logo" from the campaign brief when you have it.
+    # The official "LHM Logo" overlay supplied by the campaign.
     image: assets/lhm_watermark.png
+    width: 560
     text: "@lethimmansplain"
     position: top_right
     opacity: 0.8

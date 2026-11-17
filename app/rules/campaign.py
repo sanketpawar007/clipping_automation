@@ -20,6 +20,7 @@ class Watermark(BaseModel):
     image: str | None = None
     text: str | None = None
     position: str = "top_right"
+    width: int = 460                # pixels, on the 1080-wide output
     opacity: float = 0.8
     full_duration: bool = True
 
