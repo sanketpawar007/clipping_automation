@@ -9,6 +9,20 @@ platforms: [instagram, youtube]
 sources: []                         # the streamer's channel URLs
 payout_cpm: {instagram: 0, youtube: 0}
 profile: example_streamer           # profiles/<name>.yaml: facecam + gameplay layout
+
+# ---- How to cut clips for THIS campaign. Paste the campaign's own rules into `brief`. ----
+editing:
+  brief: |
+    (Describe the streamer, the audience, and what the campaign's brief says makes a good
+    clip. The AI reads this when it picks and judges moments.)
+  candidates: 10
+  supercut: {enabled: false}        # compilations suit talk shows more than gameplay
+  tighten: {enabled: false}         # gameplay has action during silence; do not cut it
+  headline: {enabled: true, style: "what happens, in gamer language, e.g. 'He did NOT expect this in GTA 6'"}
+  cold_open: true
+  end_on_payoff: true
+  learn_from_top_clips: true
+
 overlays: {}                        # add `watermark:` only if the brief requires one
 caption:
   first_line_must_contain: null
