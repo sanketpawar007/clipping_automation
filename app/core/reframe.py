@@ -148,41 +148,54 @@ def _detect_boxes(src: str | Path, times: list[float], w: int, h: int) -> tuple[
 
 def _snap_to_border(greys: list, guess: tuple[float, float, float, float],
                     face: tuple[float, float, float, float]) -> tuple[float, float, float, float]:
-    """Moves each side of the guessed webcam box onto the strongest straight edge nearby.
-    The webcam overlay's border stays put while the game behind it changes, so it stands out
-    in the median of many frames. Sides with no clear edge keep the guess (or the frame edge)."""
+    """Moves each side of the guessed webcam box onto the webcam overlay's border.
+
+    The border stays put while the game behind it changes, so it shows as a long straight
+    line in the median of many frames. Things in the streamer's room (door frames, shelves)
+    are static too, so a side is the OUTERMOST line that runs along most of the box, and a
+    cam tucked into a corner uses the frame edge itself."""
     if len(greys) < 5:
         return guess
     med = np.median(np.stack(greys[:40]).astype(np.float32), axis=0)
     H, W = med.shape
-    gx = np.abs(np.diff(med, axis=1))          # vertical edges
-    gy = np.abs(np.diff(med, axis=0))          # horizontal edges
+    ex = np.abs(np.diff(med, axis=1)) > 14       # vertical edge pixels
+    ey = np.abs(np.diff(med, axis=0)) > 14       # horizontal edge pixels
     x, y, bw, bh = guess
     fx, fy, fw, fh = face
-    rows = slice(int(max(0, y) * H), int(min(1, y + bh) * H))
-    cols = slice(int(max(0, x) * W), int(min(1, x + bw) * W))
+    fl, fr, ft, fb = int(fx * W), int((fx + fw) * W), int(fy * H), int((fy + fh) * H)
 
-    def best(profile: np.ndarray, lo: int, hi: int) -> int | None:
-        lo, hi = max(0, lo), min(len(profile), hi)
-        if hi - lo < 3:
+    def side(edges: np.ndarray, along: slice, lo: int, hi: int, outward: int, limit: int) -> int | None:
+        """Outermost position in [lo, hi) whose line covers most of `along`; frame edge if the
+        search reaches it without a better line."""
+        lo, hi = max(0, lo), min(edges.shape[1] if outward else edges.shape[0], hi)
+        if hi <= lo:
             return None
-        seg = profile[lo:hi]
-        i = int(np.argmax(seg))
-        return lo + i if seg[i] > 3 * (np.median(profile) + 1e-3) else None
+        cover = edges[along, lo:hi].mean(axis=0) if edges is ex else edges[lo:hi, along].mean(axis=1)
+        # allow a 1px wobble in the line
+        cover = np.maximum(cover, np.maximum(np.r_[cover[1:], 0], np.r_[0, cover[:-1]]))
+        good = np.where(cover >= 0.6)[0]
+        if len(good):
+            return lo + int(good.max() if outward > 0 else good.min())
+        reach = hi if outward > 0 else lo
+        return limit if abs(reach - limit) <= 2 else None
 
-    colp = gx[rows].mean(axis=0)
-    rowp = gy[:, cols].mean(axis=1)
-    face_l, face_r = int(fx * W), int((fx + fw) * W)
-    face_t, face_b = int(fy * H), int((fy + fh) * H)
-    span_w, span_h = int(bw * W), int(bh * H)
-    left = best(colp, face_l - span_w, face_l - int(fw * W * 0.5))
-    right = best(colp, face_r + int(fw * W * 0.5), face_r + span_w)
-    top = best(rowp, face_t - span_h, face_t - int(fh * H * 0.3))
-    bottom = best(rowp, face_b + int(fh * H * 0.5), face_b + span_h)
-    x0 = (left + 1) / W if left is not None else (0.0 if x <= 0.02 else x)
-    x1 = (right + 1) / W if right is not None else (1.0 if x + bw >= 0.98 else x + bw)
-    y0 = (top + 1) / H if top is not None else (0.0 if y <= 0.02 else y)
-    y1 = (bottom + 1) / H if bottom is not None else (1.0 if y + bh >= 0.98 else y + bh)
+    # top and bottom first, measured across the face's width and a bit more
+    cols = slice(max(0, fl - (fr - fl)), min(W - 1, fr + (fr - fl)))
+    top = side(ey, cols, ft - int(bh * H), ft - int(fh * H * 0.3), -1, 0)
+    bottom = side(ey, cols, fb + int(fh * H * 0.4), fb + int(bh * H), +1, H - 1)
+    t = top if top is not None else int(max(0, y) * H)
+    btm = bottom if bottom is not None else int(min(1, y + bh) * H)
+    rows = slice(t + 2, max(t + 3, btm - 1))
+    reach_w = int(bw * W * 1.2)
+    left = side(ex, rows, 0 if fx < 0.2 else fl - reach_w, fl - int(fw * W * 0.5), -1, 0)
+    right = side(ex, rows, fr + int(fw * W * 0.5), W - 1 if fx + fw > 0.8 else fr + reach_w, +1, W - 1)
+
+    x0 = (left + 1) / W if left is not None else x
+    x1 = (right + 1) / W if right is not None else x + bw
+    y0 = (top + 1) / H if top is not None else y
+    y1 = (bottom + 1) / H if bottom is not None else y + bh
+    x0, y0 = max(0.0, x0 if left not in (0,) else 0.0), max(0.0, y0 if top not in (0,) else 0.0)
+    x1, y1 = min(1.0, x1), min(1.0, y1)
     if x1 - x0 < fw * 2 or y1 - y0 < fh * 1.5:
         return guess
     return x0, y0, x1 - x0, y1 - y0
