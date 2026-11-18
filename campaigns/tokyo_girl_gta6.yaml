@@ -19,6 +19,8 @@ music:
   file: assets/music/tokyo_girl.mp3
   bpm: null
   start: null                      # null = start at the song's most energetic section
+  official_sound:                  # pick THIS sound in the app so the post links to the song
+    instagram: "https://www.instagram.com/reels/audio/39659270907051930/"
   credit:
     instagram: "Song: Tokyo Girl by @PassiveBand"
     tiktok: "Song: Tokyo Girl by @Passive"
