@@ -38,3 +38,7 @@ forbid: [spoilers, ad_like, negative_portrayal, explicit]
 banned_words: []
 submit_within_minutes: 30
 min_live_days: 30
+posting_notes:
+  - "Keep likes visible on every platform (hidden likes are rejected)"
+  - "Keep the post up for at least 30 days"
+  - "At 2,000 views: send a screenshot of the audience-country analytics to the Clipping Nation Discord support chat"

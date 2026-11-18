@@ -27,6 +27,16 @@ def _call(method: str, data: dict, files: dict | None = None, timeout: float = 3
     return body["result"]
 
 
+def send_html(html: str) -> bool:
+    """HTML-formatted message. Text inside <code> is copied with one tap in Telegram."""
+    if not configured():
+        console.print(f"[dim]\\[telegram not configured][/] {html}")
+        return False
+    _call("sendMessage", {"chat_id": get_settings().telegram_chat_id, "text": html[:4096],
+                          "parse_mode": "HTML", "disable_web_page_preview": "true"})
+    return True
+
+
 def send_text(text: str) -> bool:
     if not configured():
         console.print(f"[dim]\\[telegram not configured][/] {text}")

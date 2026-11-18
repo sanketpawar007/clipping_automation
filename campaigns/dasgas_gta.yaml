@@ -45,3 +45,7 @@ live:
   not_before: "2026-11-19T00:00:00-08:00"   # only Dom's 19 Nov stream is eligible
   chat: false        # Kick moved its chat server; clips come from audio spikes and sweeps
   sweep_minutes: 10
+posting_notes:
+  - "Turn ON the paid-content disclosure: TikTok 'Disclose post content > Paid partnership'; YouTube 'Paid promotion' checkbox"
+  - "Post only to ONE campaign (do not submit this post anywhere else)"
+  - "Footage must be from his 19 Nov stream only"

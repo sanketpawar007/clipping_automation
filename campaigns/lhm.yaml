@@ -65,3 +65,6 @@ forbid: [ad_like, stolen_clip]
 banned_words: []
 submit_within_minutes: 30
 min_live_days: 30
+posting_notes:
+  - "Instagram: after posting, comment the pinned-comment text from your account and pin it"
+  - "At the view minimum: screen-record the post analytics (viewer locations) for the campaign form"

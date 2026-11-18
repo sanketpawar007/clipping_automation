@@ -37,3 +37,7 @@ clip: {min_seconds: 15, max_seconds: 60}
 forbid: [spoilers, ad_like, negative_portrayal, explicit]
 banned_words: []
 submit_within_minutes: 30
+posting_notes:
+  - "English caption only, no Japanese text"
+  - "Keep the post up: views only count while it is live"
+  - "Pool campaign: views add up across all your LACY clips (750K total needed to share the pool)"

@@ -147,6 +147,7 @@ class Campaign(BaseModel):
     weights: dict[str, float] = {}
     submit_within_minutes: int = 30
     min_live_days: int = 0
+    posting_notes: list[str] = []             # rules to follow when posting, shown in the post guide
     streamer: str = ""                        # who the clips must feature (gaming campaigns)
     mode: str = "clip"                        # clip (cut long videos) | music_edit (beat-synced edits)
     posting: str = "phone"                    # phone | api: music edits must be posted by hand

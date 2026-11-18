@@ -387,17 +387,11 @@ def rerender(status: str = "pending") -> int:
 
 
 def send_live_clips(ids: list[int]) -> None:
-    """Sends live clips straight to the phone: speed matters while a stream is trending."""
-    from pathlib import Path
-
-    from app.notify import telegram
-    with db.connect() as conn:
-        rows = [dict(r) for r in conn.execute(
-            f"SELECT * FROM clips WHERE id IN ({','.join('?' * len(ids))})", ids)] if ids else []
-    for r in rows:
+    """Sends live clips straight to the phone with their post guide: speed matters while a stream
+    is trending."""
+    from app.notify import package
+    for i in ids:
         try:
-            telegram.send_video(Path(r["path"]), f"LIVE clip #{r['id']}: {r['headline'] or r['hook']}"
-                                f" (score {r['score']:.2f})")
-            telegram.send_text(r["caption"])
+            package.send(i, live=True)
         except Exception as exc:  # noqa: BLE001
-            console.print(f"[yellow]Telegram send failed for #{r['id']}: {exc}[/]")
+            console.print(f"[yellow]Telegram send failed for #{i}: {exc}[/]")

@@ -100,21 +100,11 @@ def approve(request: Request, clip_id: int):
         clip = _clip(conn, clip_id)
     if not clip["compliant"]:
         return _card(request, clip_id, "Fix the failing rules before approving.")
-    camp = campaigns.load(clip["campaign"])
     note = "Approved."
     try:
-        sent = telegram.send_video(Path(clip["path"]),
-                                   f"{camp.name}: clip #{clip_id} (score {clip['score']:.2f})")
+        from app.notify import package
+        sent = package.send(clip_id)
         if sent:
-            # caption and comment go as separate messages so each is one tap to copy
-            telegram.send_text(clip["caption"])
-            if clip["pinned_comment"]:
-                telegram.send_text(f"Pinned comment ({', '.join(camp.pinned_comment.platforms)}):")
-                telegram.send_text(clip["pinned_comment"])
-            telegram.send_text(
-                f"Post from the phone app, then submit on Content Rewards within "
-                f"{camp.submit_within_minutes} minutes of posting. Tap 'Mark posted' on the "
-                f"dashboard to start the timer.")
             note = "Approved and sent to Telegram."
         else:
             note = "Approved. Telegram is not set up, so nothing was sent to your phone."
