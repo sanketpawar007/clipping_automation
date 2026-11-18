@@ -114,16 +114,19 @@ def render_clip(src: str | Path, segs: list[tuple[float, float]], words: list[di
         extra.append(captions.overlay("Credit", ed.credit, 0, out_dur, 50, 230))
     if ed.disclosure:
         extra.append(captions.overlay("Label", ed.disclosure, 0, out_dur, 1030, 230))
+    # positions: facecam layout = title on the panel seam, captions over the gameplay;
+    # face-tracked / full-frame = title at the top, captions in the lower third, clear of the face
+    warn_y, cta_y = (1000, 1180) if facecam else (560, 1300)
     if spoiler and ed.spoiler_warning:
-        extra.append(captions.overlay("Warn", "SPOILER WARNING", 0, min(2.0, out_dur), 540, 960))
+        extra.append(captions.overlay("Warn", "SPOILER WARNING", 0, min(2.0, out_dur), 540, warn_y))
     if ed.cta and out_dur > 6:
-        extra.append(captions.overlay("Cta", ed.cta, max(0.0, out_dur - 2.8), out_dur, 540,
-                                      1180 if facecam else 900, fade=150))
+        extra.append(captions.overlay("Cta", ed.cta, max(0.0, out_dur - 2.8), out_dur, 540, cta_y,
+                                      fade=150))
     show_headline = bool(headline) and ed.headline.enabled
     if (with_captions and out_words) or show_headline or extra:
         # facecam layout: title on the seam between the two panels, captions over the gameplay
-        margin = 470 if facecam else 560
-        head = reframe.OUT_H - reframe.FACECAM_H - 45 if facecam else None
+        margin = 470 if facecam else 400
+        head = reframe.OUT_H - reframe.FACECAM_H - 45 if facecam else reframe.OUT_H - 470
         ass = captions.write_ass(out_words if with_captions else [], 0.0, out_dur,
                                  out.with_suffix(".ass"), font=s.caption_font, margin_v=margin,
                                  headline=headline if show_headline else "", head_margin=head,
