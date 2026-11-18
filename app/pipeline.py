@@ -304,7 +304,8 @@ def run(url: str, campaign_slug: str, n_clips: int | None = None, with_captions:
                                           "seed": int(w.start)})
             text = " ".join(sents[k].text for k in w.sentence_ids())
             hook = w.hook or text.split(". ")[0][:60]
-            caption = check.build_caption(camp, hook, i, w.question)
+            # vary template and rotating hashtags per clip, also when live clips come one at a time
+            caption = check.build_caption(camp, hook, i + int(time.time() // 60), w.question)
             report = check.check(camp, caption=caption, duration=r["duration"], render=r,
                                  clip_text=text, ad_like=w.ad_like, spoiler=w.spoiler,
                                  explicit=w.explicit)

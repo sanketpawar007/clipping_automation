@@ -14,8 +14,14 @@ def build_caption(campaign: Campaign, hook: str, index: int = 0, question: str =
     template = templates[index % len(templates)]
     credits = campaign.music.credit if campaign.music else {}
     credit = credits.get(platform or "", "") or next(iter(credits.values()), "")
+    tags = list(campaign.caption.hashtags)
+    pool = [t for t in campaign.caption.hashtag_pool if t not in tags]
+    if pool:                                  # a different few from the pool on each post
+        k = min(campaign.caption.pool_per_post, len(pool))
+        start = (index * k) % len(pool)
+        tags += [pool[(start + i) % len(pool)] for i in range(k)]
     text = template.format(hook=hook.strip(), question=(question or "Agree or disagree?").strip(),
-                           hashtags=" ".join(campaign.caption.hashtags), credit=credit)
+                           hashtags=" ".join(tags), credit=credit)
     return "\n".join(line for line in text.split("\n") if line.strip()).strip()
 
 
@@ -45,7 +51,7 @@ def check(campaign: Campaign, *, caption: str, duration: float, render: dict,
     for need in campaign.caption.must_contain:
         add(f"mentions {need}", need.lower() in caption.lower(), f"caption must contain {need}")
 
-    missing = [h for h in campaign.caption.hashtags if h.lower() not in caption.lower()]
+    missing = [h for h in campaign.caption.hashtags if h.lower() not in caption.lower()]  # required ones
     if campaign.caption.hashtags:
         add("hashtags", not missing, "missing " + " ".join(missing) if missing else "all present")
 

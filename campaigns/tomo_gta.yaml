@@ -27,7 +27,9 @@ editing:
 overlays: {}
 caption:
   must_contain: ["#tomovids", "#gta6", "@Tomovids", "Subscribe to Tomo on YouTube"]
-  hashtags: ["#tomovids", "#gta6", "#tomo", "#gtavi", "#funnymoments"]
+  hashtags: ["#tomovids", "#gta6"]          # required on every post
+  hashtag_pool: ["#tomo", "#gtavi", "#gta", "#gaming", "#funnymoments"]   # brief: mix these up
+  pool_per_post: 3
   templates:
     - "Tomo {hook}\nSubscribe to Tomo on YouTube @Tomovids\n{hashtags}"
     - "{hook} 😭\nSubscribe to Tomo on YouTube @Tomovids for more\n{question} 👇\n{hashtags}"

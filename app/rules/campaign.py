@@ -33,6 +33,8 @@ class Overlays(BaseModel):
 class Caption(BaseModel):
     first_line_must_contain: str | None = None
     must_contain: list[str] = []          # each must appear somewhere in the caption
+    hashtag_pool: list[str] = []          # extra tags rotated between posts ("mix them up")
+    pool_per_post: int = 3
     hashtags: list[str] = []
     templates: list[str] = ["{hook}\n{hashtags}"]
     max_length: int = 2200
