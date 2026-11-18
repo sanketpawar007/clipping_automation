@@ -31,6 +31,7 @@ class Overlays(BaseModel):
 
 class Caption(BaseModel):
     first_line_must_contain: str | None = None
+    must_contain: list[str] = []          # each must appear somewhere in the caption
     hashtags: list[str] = []
     templates: list[str] = ["{hook}\n{hashtags}"]
     max_length: int = 2200
@@ -77,6 +78,25 @@ class Editing(BaseModel):
     learn_from_top_clips: bool = True
 
 
+class Music(BaseModel):
+    """Music-edit campaigns: the song is added in the phone app, never burned into the video."""
+    title: str
+    artist: str = ""
+    file: str | None = None          # local copy used ONLY to find the beats; never exported
+    bpm: float | None = None         # used when there is no file
+    start: float | None = None       # where in the song the edit starts; found automatically
+    credit: dict[str, str] = {}      # platform -> required caption credit line
+    disclosure: dict[str, str] = {}  # platform -> how to switch on the paid-content label
+
+
+class MusicEdit(BaseModel):
+    library: str = ""                # data/library/<name>: official footage to cut from
+    themes: list[str] = ["hype", "jason_lucia", "scenic", "meme"]
+    beats_per_shot: int = 2          # cut on every 2nd beat; the first shot holds longer
+    framing: str = "crop"            # crop (full-screen 9:16) or blur (whole frame, blurred sides)
+    brief: str = ""                  # plain-language guidance for the on-screen text writer
+
+
 class Campaign(BaseModel):
     slug: str = ""
     id: str = ""
@@ -98,6 +118,11 @@ class Campaign(BaseModel):
     weights: dict[str, float] = {}
     submit_within_minutes: int = 30
     min_live_days: int = 0
+    streamer: str = ""                        # who the clips must feature (gaming campaigns)
+    mode: str = "clip"                        # clip (cut long videos) | music_edit (beat-synced edits)
+    posting: str = "phone"                    # phone | api: music edits must be posted by hand
+    music: Music | None = None
+    music_edit: MusicEdit = Field(default_factory=MusicEdit)
 
     def signal_weights(self) -> dict[str, float]:
         return {**WEIGHTS.get(self.niche, WEIGHTS["podcast"]), **self.weights}

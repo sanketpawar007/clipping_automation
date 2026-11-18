@@ -6,13 +6,16 @@ import re
 from app.rules.campaign import Campaign
 
 
-def build_caption(campaign: Campaign, hook: str, index: int = 0, question: str = "") -> str:
+def build_caption(campaign: Campaign, hook: str, index: int = 0, question: str = "",
+                  platform: str | None = None) -> str:
     """Rotates through the campaign's templates so posts do not all look identical.
     Templates may use {hook}, {question} (an engagement question) and {hashtags}."""
     templates = campaign.caption.templates or ["{hook}\n{hashtags}"]
     template = templates[index % len(templates)]
+    credits = campaign.music.credit if campaign.music else {}
+    credit = credits.get(platform or "", "") or next(iter(credits.values()), "")
     text = template.format(hook=hook.strip(), question=(question or "Agree or disagree?").strip(),
-                           hashtags=" ".join(campaign.caption.hashtags))
+                           hashtags=" ".join(campaign.caption.hashtags), credit=credit)
     return "\n".join(line for line in text.split("\n") if line.strip()).strip()
 
 
@@ -37,6 +40,9 @@ def check(campaign: Campaign, *, caption: str, duration: float, render: dict,
     if must:
         first = caption.split("\n", 1)[0]
         add("caption first line tag", must.lower() in first.lower(), f"needs {must} in line 1")
+
+    for need in campaign.caption.must_contain:
+        add(f"mentions {need}", need.lower() in caption.lower(), f"caption must contain {need}")
 
     missing = [h for h in campaign.caption.hashtags if h.lower() not in caption.lower()]
     if campaign.caption.hashtags:

@@ -147,7 +147,8 @@ You may tighten a candidate by moving its start or end line within the lines you
 Move the start forward to open on the strongest line; end on the payoff. Keep each clip inside \
 the campaign's length limits. End every clip on its payoff: the punchline, the reaction or \
 the strongest statement, never the trailing chatter after it. The caption hook should tease \
-the moment in the creator's voice without giving away the payoff, and without hashtags or \
+the moment in the creator's voice without giving away the payoff. Only name a game, person or \
+event in the headline or caption if the transcript makes it certain, and without hashtags or \
 @mentions (those are added later)."""
 
 

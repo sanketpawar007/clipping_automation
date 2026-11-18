@@ -123,12 +123,13 @@ def build_filter(src: str | Path, start: float, end: float, w: int, h: int,
             f"[b]scale={OUT_W}:-2[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2,setsar=1[v]"), "blur"
 
 
-def _detect_boxes(src: str | Path, times: list[float], w: int, h: int) -> list[list[tuple]]:
-    """Face boxes (x, y, w, h as fractions of the frame) at each of the given times."""
+def _detect_boxes(src: str | Path, times: list[float], w: int, h: int) -> tuple[list[list[tuple]], list]:
+    """Face boxes (x, y, w, h as fractions of the frame) at each of the given times, plus the
+    grey frames themselves (used to find the webcam's border)."""
     det_h = int(round(DET_W * h / w / 2) * 2)
     det = cv2.FaceDetectorYN.create(str(MODEL), "", (DET_W, det_h), 0.7, 0.3, 50)
     frame_bytes = DET_W * det_h * 3
-    out = []
+    out, greys = [], []
     for t in times:
         p = subprocess.run(
             [get_settings().ffmpeg, "-v", "error", "-ss", f"{t:.2f}", "-i", str(src), "-frames:v", "1",
@@ -138,10 +139,53 @@ def _detect_boxes(src: str | Path, times: list[float], w: int, h: int) -> list[l
             out.append([])
             continue
         frame = np.frombuffer(p.stdout, np.uint8, frame_bytes).reshape(det_h, DET_W, 3)
+        greys.append(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
         _, faces = det.detect(frame)
         out.append([(f[0] / DET_W, f[1] / det_h, f[2] / DET_W, f[3] / det_h)
                     for f in (faces if faces is not None else [])])
-    return out
+    return out, greys
+
+
+def _snap_to_border(greys: list, guess: tuple[float, float, float, float],
+                    face: tuple[float, float, float, float]) -> tuple[float, float, float, float]:
+    """Moves each side of the guessed webcam box onto the strongest straight edge nearby.
+    The webcam overlay's border stays put while the game behind it changes, so it stands out
+    in the median of many frames. Sides with no clear edge keep the guess (or the frame edge)."""
+    if len(greys) < 5:
+        return guess
+    med = np.median(np.stack(greys[:40]).astype(np.float32), axis=0)
+    H, W = med.shape
+    gx = np.abs(np.diff(med, axis=1))          # vertical edges
+    gy = np.abs(np.diff(med, axis=0))          # horizontal edges
+    x, y, bw, bh = guess
+    fx, fy, fw, fh = face
+    rows = slice(int(max(0, y) * H), int(min(1, y + bh) * H))
+    cols = slice(int(max(0, x) * W), int(min(1, x + bw) * W))
+
+    def best(profile: np.ndarray, lo: int, hi: int) -> int | None:
+        lo, hi = max(0, lo), min(len(profile), hi)
+        if hi - lo < 3:
+            return None
+        seg = profile[lo:hi]
+        i = int(np.argmax(seg))
+        return lo + i if seg[i] > 3 * (np.median(profile) + 1e-3) else None
+
+    colp = gx[rows].mean(axis=0)
+    rowp = gy[:, cols].mean(axis=1)
+    face_l, face_r = int(fx * W), int((fx + fw) * W)
+    face_t, face_b = int(fy * H), int((fy + fh) * H)
+    span_w, span_h = int(bw * W), int(bh * H)
+    left = best(colp, face_l - span_w, face_l - int(fw * W * 0.5))
+    right = best(colp, face_r + int(fw * W * 0.5), face_r + span_w)
+    top = best(rowp, face_t - span_h, face_t - int(fh * H * 0.3))
+    bottom = best(rowp, face_b + int(fh * H * 0.5), face_b + span_h)
+    x0 = (left + 1) / W if left is not None else (0.0 if x <= 0.02 else x)
+    x1 = (right + 1) / W if right is not None else (1.0 if x + bw >= 0.98 else x + bw)
+    y0 = (top + 1) / H if top is not None else (0.0 if y <= 0.02 else y)
+    y1 = (bottom + 1) / H if bottom is not None else (1.0 if y + bh >= 0.98 else y + bh)
+    if x1 - x0 < fw * 2 or y1 - y0 < fh * 1.5:
+        return guess
+    return x0, y0, x1 - x0, y1 - y0
 
 
 def detect_stream_layout(src: str | Path, duration: float, w: int, h: int, samples: int = 40) -> dict:
@@ -153,7 +197,7 @@ def detect_stream_layout(src: str | Path, duration: float, w: int, h: int, sampl
     - Otherwise it is gameplay only: whole frame over a blurred copy.
     Game characters have faces too, but they move around, so they fail the "same spot" test."""
     times = [duration * (i + 0.5) / samples for i in range(samples)]
-    frames = _detect_boxes(src, times, w, h)
+    frames, greys = _detect_boxes(src, times, w, h)
     small = [b for faces in frames for b in faces if b[2] < 0.22]
     big_share = sum(1 for faces in frames if any(b[2] >= 0.22 for b in faces)) / samples
 
@@ -169,17 +213,19 @@ def detect_stream_layout(src: str | Path, duration: float, w: int, h: int, sampl
                     if any(abs(b[0] + b[2] / 2 - cx[best]) < 0.04 and abs(b[1] + b[3] / 2 - cy[best]) < 0.05
                            for b in faces)) / samples
         if share >= 0.4:
-            fx = float(np.median([b[0] + b[2] / 2 for b in near]))
-            fy = float(np.median([b[1] + b[3] / 2 for b in near]))
+            fx = float(np.median([b[0] for b in near]))
+            fy = float(np.median([b[1] for b in near]))
             fw = float(np.median([b[2] for b in near]))
             fh = float(np.median([b[3] for b in near]))
-            # a webcam frame is roughly 3 face-widths wide, 4:3, face a little above centre
-            bw = min(1.0, fw * 3.2)
-            bh = min(1.0, bw * w * 0.75 / h)
-            bx = float(np.clip(fx - bw / 2, 0, 1 - bw))
-            by = float(np.clip(fy + fh * 0.2 - bh / 2, 0, 1 - bh))
+            # first guess: a 16:9 webcam about 7 face-widths wide, face a little above centre
+            bw = min(1.0, fw * 7.5)
+            bh = min(1.0, bw * w * 9 / 16 / h)
+            bx = float(np.clip(fx + fw / 2 - bw / 2, 0, 1 - bw))
+            by = float(np.clip(fy + fh / 2 - bh * 0.45, 0, 1 - bh))
+            bx, by, bw, bh = _snap_to_border(greys, (bx, by, bw, bh), (fx, fy, fw, fh))
+            face_cx = fx + fw / 2
             # keep the gameplay under the cam rather than the side the cam covers
-            focus = 0.5 if 0.3 < fx < 0.7 else (0.6 if fx < 0.3 else 0.4)
+            focus = 0.5 if 0.3 < face_cx < 0.7 else (0.6 if face_cx < 0.3 else 0.4)
             return {"layout": "facecam_top", "facecam": {"x": bx, "y": by, "w": bw, "h": bh},
                     "gameplay_focus_x": focus, "detected": f"facecam in {share:.0%} of frames"}
     if big_share >= 0.5:
