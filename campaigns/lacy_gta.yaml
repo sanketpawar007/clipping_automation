@@ -1,0 +1,36 @@
+# $12,500 LACY GTA VI Marathon (Reach). Brief: campaigns/briefs/gta_streamers.md
+id: a5c63fad-cd53-4b81-9305-4a2d1696872a
+name: LACY GTA VI Marathon
+niche: gaming
+streamer: LACY
+accounts: {youtube: vicevisionclips, instagram: vicevisionclips, tiktok: vicevisionclips}
+platforms: [tiktok, instagram, youtube]
+sources: ["https://www.twitch.tv/lacy"]
+payout_cpm: {}                       # pool: split by approved views, 750K views minimum
+editing:
+  brief: |
+    LACY is streaming a GTA VI marathon on Twitch from the 19 Nov launch. Clip his funniest
+    moments, memorable quotes and big reactions. LACY must be the main focus: his facecam or
+    his voice reacting, not plain gameplay. Keep the setup, his reaction and the payoff.
+    Never portray him negatively or build a false narrative ("hate farming"). Skip story
+    cutscenes and mission endings (spoilers). English only.
+  candidates: 10
+  supercut: {enabled: false}
+  tighten: {enabled: false}
+  headline: {enabled: true, style: "starts with LACY, then what happens, e.g. 'LACY did NOT expect this in GTA 6'"}
+  cold_open: true
+  end_on_payoff: true
+  learn_from_top_clips: true
+overlays: {}                         # "Logos of any kind are not allowed": no watermark
+caption:
+  must_contain: ["LACY", "#LACY"]
+  hashtags: ["#LACY", "#gta6", "#gtavi"]
+  templates:
+    - "LACY {hook}\n{question} 👇\n{hashtags}"
+    - "{hook} 😭 (LACY)\n{hashtags}"
+pinned_comment: {platforms: [], replies: []}
+preferences: {styles: [big_reaction, funny, quote, chaos]}
+clip: {min_seconds: 15, max_seconds: 60}
+forbid: [spoilers, ad_like, negative_portrayal]
+banned_words: []
+submit_within_minutes: 30

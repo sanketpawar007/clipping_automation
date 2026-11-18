@@ -55,6 +55,14 @@ def clip(url: str, campaign: str = typer.Option(..., "--campaign", "-c", help="c
 
 
 @app.command()
+def live(campaign: str = typer.Option(..., "--campaign", "-c"),
+         url: str = typer.Option("", help="Override the campaign's first source channel.")) -> None:
+    """Wait for the streamer to go live, then clip the stream while it airs (runs forever)."""
+    from app.live import session
+    session.watch(campaign, url or None)
+
+
+@app.command()
 def rerender(status: str = typer.Option("pending", help="Which clips: pending, approved...")) -> None:
     """Rebuild existing clips with the current watermark, headline and pacing settings (no AI cost)."""
     from app import pipeline

@@ -1,0 +1,11 @@
+# GTA VI streamer campaigns joined on 18 Nov 2026 (read from Content Rewards + linked briefs)
+
+| Campaign | Streamer / source | Pay | Platforms | Key rules |
+|---|---|---|---|---|
+| $12,500 LACY GTA VI Marathon (Reach) `a5c63fad-cd53-4b81-9305-4a2d1696872a` | twitch.tv/lacy, marathon from 18 Nov | Pool split by views; your approved views must total 750K to share | TikTok, IG Reels, YT Shorts, X | Lacy is the primary focus; caption/overlay mentions LACY; caption has #LACY; no logos; 50%+ native-English audience; no negative portrayal / hate farming; no AI-generated video; no Japanese captions; submit within 30 min. Brief: reachclipping.com/LACYGTA |
+| $5,000 Clix GTA VI Marathon (Reach) `985dc674-c75e-44fc-ac87-1b1506324389` | twitch.tv/clix, marathon from 18 Nov | Pool split by views; 400K approved views minimum | TikTok, IG Reels, YT Shorts, X | Clix is the primary focus; caption/overlay mentions Clix; #Clix; no logos; 50%+ native-English audience; no negative portrayal; no AI video; submit within 30 min. Brief: reachclipping.com/ClixGTA |
+| TOMO GTA VI Clipping (Clipping Nation) `df6de26f-86ec-4782-b818-1fc8053b99a4` | YouTube live: youtube.com/@Tomovids/streams + his GTA VI videos | $2.00/1K, $4 min (2K views), $150 max, $1,000 budget | TikTok, IG Reels, YT Shorts | Mention Tomo + CTA "subscribe to Tomo on YouTube"; #tomovids #gta6; mention @Tomovids on screen or caption; English; 40%+ Tier 1; at 2,000 views send audience-country proof on their Discord; likes visible; 1% engagement; stays live 30 days; no AI; max 5 near-identical. Brief: Notion "Tomo GTA VI Clipping: Requirements & Guide" |
+| Dasgasd3m x RUCKUS GTA 6 `051002dd-5c46-43d0-a446-43f2957ba3a9` | ONLY Dom's 19 Nov GTA 6 stream at kick.com/dasgasd3m (live or its VOD) | $1.00/1K, $10 min (10K views), $100 max, $1,000 budget | TikTok, YT Shorts only | Opens 19 Nov 9:00 AM PST (10:30 PM IST); GTA 6-specific account; credit dasgasd3m on Kick + "kick.com/dasgasd3m" + #dasgasdom3; disclose paid content; keep his face or voice; no spoilers in the cover; skip explicit jokes; one campaign per post; deadline 19 Dec. |
+
+All four are posted from Vice Vision (@vicevisionclips), a GTA 6 page. Reach suggests a dedicated
+page per streamer but accepts a relevant pre-existing page. "No logos" means no watermark.

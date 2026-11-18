@@ -51,9 +51,19 @@ def loudness_track(db: np.ndarray, n: int) -> np.ndarray:
     return x
 
 
+def chat_track(times: list[float], n: int) -> np.ndarray:
+    """Live chat messages per second, smoothed: a burst of messages marks a moment."""
+    x = np.zeros(n)
+    for t in times:
+        if 0 <= t < n:
+            x[int(t)] += 1
+    return _norm(_smooth(x, 5))
+
+
 def build(meta: dict, loudness_db: np.ndarray) -> dict[str, np.ndarray]:
     n = int(np.ceil(meta["duration"])) + 1
     return {
+        "chat": chat_track(meta.get("chat_times") or [], n),
         "heatmap": heatmap_track(meta.get("heatmap") or [], n),
         "comments": comments_track(meta.get("comment_timestamps") or [], n),
         "loudness": loudness_track(loudness_db, n),

@@ -78,16 +78,37 @@ def stream_profile(camp: campaigns.Campaign, meta: dict, workdir) -> dict:
     return meta["layout"]
 
 
+def run_local(path, campaign_slug: str, title: str, stream_url: str, stream_offset: float,
+              n_clips: int, profile: dict | None, chat_times: list[float],
+              chat_lines: list[str]) -> list[int]:
+    """Clips a local file cut from a live recording (see app/live)."""
+    from pathlib import Path
+    path = Path(path)
+    vid = f"live_{campaign_slug}_{int(time.time())}"
+    workdir = vod.video_dir(vid)
+    dst = workdir / "source.mp4"
+    path.replace(dst)
+    meta = {"video_id": vid, "url": f"{stream_url}#live{int(stream_offset)}", "title": title,
+            "duration": media.probe(dst)["duration"], "path": str(dst), "offset": stream_offset,
+            "heatmap": [], "comment_timestamps": [], "chat_times": chat_times, "live": True}
+    if profile:
+        meta["layout"] = profile
+    (workdir / "meta.json").write_text(db.dumps(meta))
+    return run(meta["url"], campaign_slug, n_clips=n_clips, meta=meta, chat_lines=chat_lines)
+
+
 def run(url: str, campaign_slug: str, n_clips: int | None = None, with_captions: bool = True,
-        only_kind: str | None = None, start: float | None = None, end: float | None = None) -> list[int]:
+        only_kind: str | None = None, start: float | None = None, end: float | None = None,
+        meta: dict | None = None, chat_lines: list[str] | None = None) -> list[int]:
     t0 = time.time()
     s = get_settings()
     camp = campaigns.load(campaign_slug)
     weights = camp.signal_weights()
     n_clips = n_clips or camp.editing.candidates
 
-    _step("downloading video, heatmap and comments", t0)
-    meta = vod.ingest(url, start=start, end=end)
+    if meta is None:
+        _step("downloading video, heatmap and comments", t0)
+        meta = vod.ingest(url, start=start, end=end)
     workdir = vod.video_dir(meta["video_id"])
     src = meta["path"]
     profile = stream_profile(camp, meta, workdir)
@@ -107,6 +128,11 @@ def run(url: str, campaign_slug: str, n_clips: int | None = None, with_captions:
         sents = transcript.to_sentences(words)
         if not sents:
             raise RuntimeError("Transcript is empty: no speech found in this video.")
+        context = ""
+        if chat_lines:
+            context = ("\n<live_chat>\nWhat the stream's chat was typing during this stretch, oldest "
+                       "first. Bursts of laughter or shock show where the moment is.\n"
+                       + "\n".join(x[:120] for x in chat_lines[-150:]) + "\n</live_chat>\n")
 
         _step("measuring audience and audio signals", t0)
         tracks = signals.build(meta, media.loudness_per_second(src))
@@ -114,7 +140,8 @@ def run(url: str, campaign_slug: str, n_clips: int | None = None, with_captions:
 
         _step("recall: scanning the whole transcript for candidate moments", t0)
         windows: list[select.Window] = []
-        found = llm.recall(transcript.render_for_llm(sents), camp, meta["duration"])
+        found = llm.recall(transcript.render_for_llm(sents), camp, meta["duration"],
+                           want=max(8, n_clips * 3), context=context)
         last = len(sents) - 1
         if found:
             for c in found.candidates:
@@ -143,7 +170,7 @@ def run(url: str, campaign_slug: str, n_clips: int | None = None, with_captions:
         winners = top_clips(camp)
         _step("rerank: judging candidates against the rubric"
               + (f" and {len(winners)} top clips from this campaign" if winners else ""), t0)
-        verdicts = llm.judge([select.judge_block(w, sents) for w in windows], camp, winners)
+        verdicts = llm.judge([select.judge_block(w, sents) for w in windows], camp, winners, context)
         for w in windows:
             if w.id in verdicts:
                 select.apply_verdict(w, verdicts[w.id])
@@ -255,3 +282,20 @@ def rerender(status: str = "pending") -> int:
         console.print(f"clip #{r['id']}: {out['duration']:.0f}s  {ok}")
         done += 1
     return done
+
+
+def send_live_clips(ids: list[int]) -> None:
+    """Sends live clips straight to the phone: speed matters while a stream is trending."""
+    from pathlib import Path
+
+    from app.notify import telegram
+    with db.connect() as conn:
+        rows = [dict(r) for r in conn.execute(
+            f"SELECT * FROM clips WHERE id IN ({','.join('?' * len(ids))})", ids)] if ids else []
+    for r in rows:
+        try:
+            telegram.send_video(Path(r["path"]), f"LIVE clip #{r['id']}: {r['headline'] or r['hook']}"
+                                f" (score {r['score']:.2f})")
+            telegram.send_text(r["caption"])
+        except Exception as exc:  # noqa: BLE001
+            console.print(f"[yellow]Telegram send failed for #{r['id']}: {exc}[/]")

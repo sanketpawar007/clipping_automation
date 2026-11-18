@@ -12,7 +12,8 @@ from app.config import ROOT
 # game sound and silence make the transcript weak (PLAN.md section 7).
 WEIGHTS = {
     "podcast": {"judge": 0.60, "heatmap": 0.14, "comments": 0.08, "loudness": 0.06, "video": 0.12},
-    "gaming": {"judge": 0.35, "heatmap": 0.15, "comments": 0.05, "loudness": 0.20, "video": 0.25},
+    "gaming": {"judge": 0.35, "heatmap": 0.10, "comments": 0.05, "loudness": 0.15, "video": 0.20,
+               "chat": 0.25},
 }
 
 
@@ -97,6 +98,23 @@ class MusicEdit(BaseModel):
     brief: str = ""                  # plain-language guidance for the on-screen text writer
 
 
+class Live(BaseModel):
+    """Clipping while the stream is live."""
+    quality: str = "1080p60,1080p,720p60,720p,best"
+    chat: bool = True
+    chat_z: float = 4.0              # how unusual chat activity must be (vs. this stream's normal)
+    min_messages: int = 8            # and at least this many messages in the last 15 seconds
+    audio_db: float = 14.0           # or a loudness jump this far above the recent normal
+    before_s: float = 55             # footage kept before the spike (the setup)
+    after_s: float = 20              # and after it (the reaction and payoff)
+    cooldown_s: float = 75
+    sweep_minutes: int = 15          # also review every N minutes for quotes chat did not react to
+    sweep_clips: int = 1
+    max_clips_per_hour: int = 10     # spending cap
+    keep_minutes: int = 90           # raw footage kept on disk
+    send_to_phone: bool = True       # send each live clip to Telegram straight away
+
+
 class Campaign(BaseModel):
     slug: str = ""
     id: str = ""
@@ -121,6 +139,7 @@ class Campaign(BaseModel):
     streamer: str = ""                        # who the clips must feature (gaming campaigns)
     mode: str = "clip"                        # clip (cut long videos) | music_edit (beat-synced edits)
     posting: str = "phone"                    # phone | api: music edits must be posted by hand
+    live: Live = Field(default_factory=Live)
     music: Music | None = None
     music_edit: MusicEdit = Field(default_factory=MusicEdit)
 

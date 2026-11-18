@@ -1,0 +1,55 @@
+# GTA 6 x "Tokyo Girl" by Passive (Placements). Full brief: campaigns/briefs/tokyo_girl_gta6.md
+# This is NOT stream clipping: we make short beat-synced GTA 6 edits with on-screen text.
+# The song is added in the Instagram/TikTok app as the OFFICIAL sound, so the exported video
+# is silent. Posted by hand from the phone (the APIs cannot attach official sounds).
+id: 40046522-56d9-45ad-9198-faea8eca90c6
+name: Tokyo Girl x GTA 6
+mode: music_edit
+niche: music_edit
+posting: phone
+accounts: {instagram: vicevisionclips, tiktok: vicevisionclips}
+platforms: [instagram, tiktok]
+payout_cpm: {instagram: 0.70, tiktok: 0.70}     # $2 minimum, $35 maximum per post
+
+music:
+  title: Tokyo Girl
+  artist: Passive
+  # Put a copy of the song here so the edit can cut on its beats. It is only analysed,
+  # never put into the exported video. Without it, set `bpm` instead.
+  file: assets/music/tokyo_girl.mp3
+  bpm: null
+  start: null                      # null = start at the song's most energetic section
+  credit:
+    instagram: "Song: Tokyo Girl by @PassiveBand"
+    tiktok: "Song: Tokyo Girl by @Passive"
+  disclosure:
+    instagram: "Before posting: Advanced settings > Add paid partnership label ON"
+    tiktok: "Before posting: More options > Disclose post content > Paid partnership ON"
+
+music_edit:
+  library: gta6                     # data/library/gta6: OFFICIAL Rockstar trailers/screenshots only
+  themes: [hype, jason_lucia, scenic, meme]
+  beats_per_shot: 2
+  framing: crop
+  brief: |
+    GTA 6 fan-page edits set to "Tokyo Girl". No talking: the story is told with short
+    on-screen text so the song stays the star. Themes the campaign approves:
+    - hype: the wait is over, launch-day plans, "this game is going to be insane"
+    - jason_lucia: the couple, partners in crime, relationship memes
+    - scenic: Vice City views, beaches, sunsets, cars, driving
+    - meme: relatable fan jokes about GTA 6 (calling in sick, the wait, the prices)
+    - news: only when real facts are supplied with --facts; never invent news or leaks
+    Text must be short (3-7 words per line), readable, and land on the beat changes.
+    Never show leaked footage, never imply this is an official Rockstar account.
+
+caption:
+  first_line_must_contain: null
+  hashtags: ["#gta6", "#gtavi", "#vicecity", "#tokyogirl"]
+  templates:
+    - "{hook}\n{credit}\n{hashtags}"
+    - "{hook} 🌴\n{credit}\n{question} 👇\n{hashtags}"
+clip: {min_seconds: 7, max_seconds: 20}
+forbid: [talking, spoilers, ad_like, leaked_footage]
+banned_words: []
+submit_within_minutes: 30
+min_live_days: 30

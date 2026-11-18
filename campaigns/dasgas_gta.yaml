@@ -1,0 +1,37 @@
+# Dasgasd3m x RUCKUS GTA 6. Brief: campaigns/briefs/gta_streamers.md
+# ONLY Dom's 19 Nov 2026 Kick stream is eligible (live or its VOD). Opens 19 Nov 9:00 AM PST.
+id: 051002dd-5c46-43d0-a446-43f2957ba3a9
+name: Dasgasd3m x RUCKUS GTA 6
+niche: gaming
+streamer: Dom (dasgasd3m)
+accounts: {youtube: vicevisionclips, tiktok: vicevisionclips}
+platforms: [tiktok, youtube]          # no Instagram on this campaign
+sources: ["https://kick.com/dasgasd3m"]
+payout_cpm: {tiktok: 1.00, youtube: 1.00}   # $10 min (10K views), $100 max
+editing:
+  brief: |
+    Dom (dasgasd3m) is a Kick streamer known for funny, emotional and unexpected reactions.
+    Clip his GTA 6 moments: reacting to a character's death or a big story moment, real
+    glitches, funny comments, crashes or failed missions, unexpected NPC interactions, real
+    chat exchanges. Keep the setup, his reaction and the payoff, and keep his face or voice in
+    the clip. Skip explicit adult jokes. Never reveal a spoiler in the headline.
+  candidates: 10
+  supercut: {enabled: false}
+  tighten: {enabled: false}
+  headline: {enabled: true, style: "'Dasgas Dom ...' e.g. 'Dasgas Dom finds a GTA 6 glitch' (no spoilers)"}
+  cold_open: true
+  end_on_payoff: true
+  learn_from_top_clips: true
+overlays: {}
+caption:
+  must_contain: ["dasgasd3m", "kick.com/dasgasd3m", "#dasgasdom3"]
+  hashtags: ["#dasgasdom3", "#gta6", "#ad"]
+  templates:
+    - "Dasgas Dom {hook}\nWatch dasgasd3m live on kick.com/dasgasd3m\n{hashtags}"
+    - "{hook} 😭\nFull stream: kick.com/dasgasd3m (dasgasd3m on Kick)\n{hashtags}"
+pinned_comment: {platforms: [], replies: []}
+preferences: {styles: [big_reaction, funny, glitch, fail]}
+clip: {min_seconds: 15, max_seconds: 60}
+forbid: [spoilers, ad_like, explicit]
+banned_words: []
+submit_within_minutes: 30

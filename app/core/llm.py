@@ -71,7 +71,7 @@ def _brief(campaign: Campaign) -> str:
 
 
 def recall(transcript: str, campaign: Campaign, duration_s: float,
-           want: int = 30) -> RecallResult | None:
+           want: int = 30, context: str = "") -> RecallResult | None:
     client = _client()
     if client is None:
         return None
@@ -83,7 +83,7 @@ def recall(transcript: str, campaign: Campaign, duration_s: float,
         f"The video is {duration_s / 60:.0f} minutes long. Each clip should run "
         f"{lim.min_seconds:.0f}-{lim.max_seconds:.0f} seconds (timestamps are at the start of "
         f"each line). Return up to {want} candidates, spread across the whole video."
-        + _brief(campaign))
+        + _brief(campaign) + context)
     sc = campaign.editing.supercut
     if sc.enabled:
         prompt += (
@@ -163,7 +163,8 @@ def _winning(top_clips: list[dict]) -> str:
             f"{rows}\n</top_clips_on_this_campaign>\n")
 
 
-def judge(blocks: list[dict], campaign: Campaign, top_clips: list[dict] | None = None) -> dict[int, Verdict]:
+def judge(blocks: list[dict], campaign: Campaign, top_clips: list[dict] | None = None,
+          context: str = "") -> dict[int, Verdict]:
     """blocks: [{id, kind, lines (numbered text incl. a little context), seconds, signals}]."""
     client = _client()
     if client is None or not blocks:
@@ -188,6 +189,7 @@ def judge(blocks: list[dict], campaign: Campaign, top_clips: list[dict] | None =
            if campaign.editing.headline.style else "")
         + _brief(campaign)
         + (_winning(top_clips or []) if campaign.editing.learn_from_top_clips else "")
+        + context
         + "\nReturn one verdict per candidate.")
     resp = client.beta.messages.parse(
         model=s.judge_model, max_tokens=16000, system=JUDGE_SYSTEM,
