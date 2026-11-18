@@ -271,7 +271,8 @@ def _cutout_box(fx: float, fy: float, fw: float, fh: float) -> tuple[float, floa
     return bx, by, bw, bh
 
 
-def detect_stream_layout(src: str | Path, duration: float, w: int, h: int, samples: int = 40) -> dict:
+def detect_stream_layout(src: str | Path, duration: float, w: int, h: int, samples: int = 40,
+                         start: float = 0.0) -> dict:
     """Works out a streamer's layout from the video itself, so no profile file is needed.
 
     - A small face that stays in the same spot in most frames is a facecam overlay:
@@ -279,7 +280,7 @@ def detect_stream_layout(src: str | Path, duration: float, w: int, h: int, sampl
     - A large face on screen most of the time is an IRL or just-chatting stream: follow the face.
     - Otherwise it is gameplay only: whole frame over a blurred copy.
     Game characters have faces too, but they move around, so they fail the "same spot" test."""
-    times = [duration * (i + 0.5) / samples for i in range(samples)]
+    times = [start + duration * (i + 0.5) / samples for i in range(samples)]
     frames, greys = _detect_boxes(src, times, w, h)
     small = [b for faces in frames for b in faces if b[2] < 0.22]
     big_share = sum(1 for faces in frames if any(b[2] >= 0.22 for b in faces)) / samples

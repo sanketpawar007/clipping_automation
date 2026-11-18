@@ -133,6 +133,25 @@ def _apply_plan(w: select.Window, src: str, meta: dict, camp: campaigns.Campaign
                   highlight=False)
 
 
+def _clip_layout(camp: campaigns.Campaign, src: str, w: select.Window, fallback: dict) -> dict:
+    """Streamers move their camera and switch scenes during a stream, so for gaming campaigns
+    without a fixed profile file the layout is detected from this clip's own footage."""
+    if camp.profile or camp.niche != "gaming" or not fallback:
+        return fallback
+    from app.core import reframe
+    a, b = w.start, w.end
+    try:
+        info = media.probe(src)
+        found = reframe.detect_stream_layout(src, max(1.0, b - a), info["width"], info["height"],
+                                             samples=24, start=a)
+    except Exception as exc:  # noqa: BLE001 - keep the stream-level layout
+        console.print(f"[yellow]clip layout detection failed, using the stream's: {exc}[/]")
+        return fallback
+    if found.get("layout") != fallback.get("layout") or found.get("facecam") != fallback.get("facecam"):
+        console.print(f"         layout for this clip: {found['layout']} ({found.get('detected')})")
+    return found
+
+
 def run_local(path, campaign_slug: str, title: str, stream_url: str, stream_offset: float,
               n_clips: int, profile: dict | None, chat_times: list[float],
               chat_lines: list[str]) -> list[int]:
@@ -298,7 +317,8 @@ def run(url: str, campaign_slug: str, n_clips: int | None = None, with_captions:
                   f"  {w.duration:.0f}s  score {w.score:.2f}", t0)
             tag = "sc" if w.kind == "supercut" else "c"
             out = workdir / "clips" / f"{meta['video_id']}_{tag}{int(w.start)}.mp4"
-            r = render.render_clip(src, w.segs, words, out, camp, profile, with_captions and w.captions,
+            clip_profile = _clip_layout(camp, src, w, profile)
+            r = render.render_clip(src, w.segs, words, out, camp, clip_profile, with_captions and w.captions,
                                    w.headline, zooms=w.zooms, spoiler=w.spoiler,
                                    style={"fmt": w.fmt, "title": w.title_style, "zoom": w.zoom_mode,
                                           "seed": int(w.start)})
