@@ -330,7 +330,8 @@ Be strict: one great clip beats ten average ones."""
 
 
 def edit_plan(source: str | Path, start: float, end: float, campaign: Campaign, transcript_lines: str,
-              workdir: Path, winning: list[dict] | None = None) -> EditPlan | None:
+              workdir: Path, winning: list[dict] | None = None, themes: list[str] | None = None
+              ) -> EditPlan | None:
     """Gemini watches and hears [start, end] of the source and plans the edit. Times in the plan
     are relative to `start`."""
     s = get_settings()
@@ -349,6 +350,9 @@ def edit_plan(source: str | Path, start: float, end: float, campaign: Campaign, 
             f"- {c.get('views') or 0:,} views: {(c.get('title') or '').strip()[:120]}" for c in winning[:8])
     prompt = EDITOR_PROMPT.format(streamer=campaign.streamer or "the streamer", winning=win,
                                   brief=campaign.editing.brief.strip(), transcript=transcript_lines)
+    if themes:
+        prompt += ("\n\nMoments already saved for montages, by theme: " + ", ".join(themes) +
+                   ". If you collect a moment that fits one of these, use exactly that theme label.")
     try:
         client = genai.Client(api_key=s.gemini_api_key)
         resp = client.models.generate_content(

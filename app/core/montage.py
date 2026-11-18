@@ -58,6 +58,11 @@ def save_moments(camp: Campaign, meta: dict, src: str, words: list[dict], moment
     return saved
 
 
+def themes(camp: Campaign) -> list[str]:
+    """Themes that already have saved moments, so new moments join them instead of near-duplicates."""
+    return sorted({it["theme"] for it in _load(camp)})
+
+
 def _load(camp: Campaign) -> list[dict]:
     items = []
     for p in sorted(bin_dir(camp).glob("*.json")):

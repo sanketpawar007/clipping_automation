@@ -86,7 +86,8 @@ def _apply_plan(w: select.Window, src: str, meta: dict, camp: campaigns.Campaign
     a = max(0.0, w.start - pad_before)
     b = min(meta["duration"], w.end + pad_after)
     lines = "\n".join(f"[{x.start - a:6.1f}s] {x.text}" for x in sents if a <= x.start < b)
-    plan = llm.edit_plan(src, a, b, camp, lines or "(no speech)", workdir, winners)
+    from app.core import montage
+    plan = llm.edit_plan(src, a, b, camp, lines or "(no speech)", workdir, winners, montage.themes(camp))
     if plan is None:
         return
     lo, hi = camp.clip.min_seconds, camp.clip.max_seconds
@@ -121,7 +122,8 @@ def _apply_plan(w: select.Window, src: str, meta: dict, camp: campaigns.Campaign
                   and not w.explicit and plan.virality >= camp.editing.min_virality
                   and not (w.spoiler and not camp.editing.spoiler_warning))
     m = plan.moment
-    if plan.collect_theme and not plan.unsafe_people and not w.explicit and 2.0 <= m.end - m.start <= 15:
+    if plan.collect_theme and plan.virality >= 4 and not plan.unsafe_people and not w.explicit \
+            and 2.0 <= m.end - m.start <= 15:
         w.collect = {"theme": plan.collect_theme.strip().lower(), "start": a + max(0.0, m.start),
                      "end": a + min(b - a, m.end), "desc": plan.what_happens, "virality": plan.virality}
     console.print(f"         {'KEEP' if w.postable else 'drop'} {plan.virality}/10 {w.fmt:8} "
