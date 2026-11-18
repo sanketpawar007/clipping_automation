@@ -88,6 +88,29 @@ def _crop_x_expr(segs: list[tuple[float, float]], w: int, crop_w: int) -> str:
     return expr
 
 
+def gameplay_window(cam: dict, w: int, h: int, aspect: float) -> tuple[int, int, int, int]:
+    """The gameplay part for the lower panel: the largest window of the panel's shape, centred on
+    the action (middle of the screen, a little above centre), that does not include the facecam.
+    Keeping to the centre also keeps side overlays such as the stream's chat box out."""
+    cx0, cy0 = cam["x"] * w, cam["y"] * h
+    cx1, cy1 = cx0 + cam["w"] * w, cy0 + cam["h"] * h
+    best = None
+    for scale in np.linspace(1.0, 0.55, 19):
+        gh = int(h * scale) // 2 * 2
+        gw = int(min(w, gh * aspect)) // 2 * 2
+        gh = int(gw / aspect) // 2 * 2
+        for centre_x in (0.5, 0.55, 0.45, 0.6, 0.4):
+            gx = int(np.clip(centre_x * w - gw / 2, 0, w - gw))
+            gy = int(np.clip(0.47 * h - gh / 2, 0, h - gh))
+            overlap_w = max(0.0, min(gx + gw, cx1) - max(gx, cx0))
+            overlap_h = max(0.0, min(gy + gh, cy1) - max(gy, cy0))
+            if overlap_w * overlap_h <= 0.02 * gw * gh:        # at most a sliver of the cam
+                return gx, gy, gw, gh
+            if best is None:
+                best = (gx, gy, gw, gh)
+    return best
+
+
 def build_filter(src: str | Path, start: float, end: float, w: int, h: int,
                  profile: dict | None = None) -> tuple[str, str]:
     """Returns (ffmpeg filter producing [v] from [0:v], layout name)."""
@@ -110,14 +133,13 @@ def build_filter(src: str | Path, start: float, end: float, w: int, h: int,
         top_h = int(profile.get("facecam_height", FACECAM_H))
         bot_h = OUT_H - top_h
         fx, fy, fw, fh = (int(f["x"] * w), int(f["y"] * h), int(f["w"] * w), int(f["h"] * h))
-        gw = int(min(w, h * OUT_W / bot_h) // 2 * 2)
-        gx = int(np.clip(profile.get("gameplay_focus_x", 0.5) * w - gw / 2, 0, w - gw))
+        gx, gy, gw, gh = gameplay_window(f, w, h, OUT_W / bot_h)
         return (f"[0:v]split[a][b];"
                 f"[a]crop={fw}:{fh}:{fx}:{fy},scale={OUT_W}:{top_h}:force_original_aspect_ratio=increase:flags=lanczos,"
                 f"unsharp=5:5:0.7:5:5:0,"
                 f"crop={OUT_W}:{top_h}[top];"
-                f"[b]crop={gw}:{h}:{gx}:0,scale={OUT_W}:{bot_h}:force_original_aspect_ratio=increase:flags=lanczos,"
-                f"crop={OUT_W}:{bot_h}[bot];[top][bot]vstack,setsar=1[v]"), "facecam_top"
+                f"[b]crop={gw}:{gh}:{gx}:{gy},scale={OUT_W}:{bot_h}:flags=lanczos[bot];"
+                f"[top][bot]vstack,setsar=1[v]"), "facecam_top"
 
     crop_w = int(h * OUT_W / OUT_H // 2 * 2)
     if layout == "center":
