@@ -86,6 +86,7 @@ class Music(BaseModel):
     file: str | None = None          # local copy used ONLY to find the beats; never exported
     bpm: float | None = None         # used when there is no file
     start: float | None = None       # where in the song the edit starts; found automatically
+    official_sound: dict[str, str] = {}  # platform -> link to the official in-app sound
     credit: dict[str, str] = {}      # platform -> required caption credit line
     disclosure: dict[str, str] = {}  # platform -> how to switch on the paid-content label
 
