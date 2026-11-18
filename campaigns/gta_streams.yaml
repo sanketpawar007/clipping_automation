@@ -1,0 +1,48 @@
+# GTA VI streamer clips for the Vice Vision page.
+# Fill in `id` and `sources` from the streamer campaign you join on Content Rewards, and paste
+# its rules into `editing.brief` and the caption/forbid sections. Only clip streams that
+# campaign permits: clips of random streamers are not paid and risk copyright strikes.
+id: ""
+name: GTA VI streamer clips (Vice Vision)
+niche: gaming                       # weights loudness and the video judge above the transcript
+accounts: {youtube: vicevisionclips, instagram: vicevisionclips, tiktok: vicevisionclips}
+platforms: [instagram, youtube, tiktok]
+sources: []                         # the permitted streamer's Twitch/Kick/YouTube channel URLs
+payout_cpm: {}
+# profile: <name>                   # optional profiles/<name>.yaml; without it the layout
+                                    # (facecam on top, face tracking, or gameplay) is detected
+
+editing:
+  brief: |
+    GTA VI launched on 19 November 2026. The streamer is playing it for the first time, and
+    viewers want the funniest, most chaotic and most shocking moments: big reactions, rage,
+    fails, police chases going wrong, surprising game mechanics, funny interactions with
+    chat or other players, and jaw-drop "this game is insane" moments.
+    The clip should make sense to someone who has not watched the stream: the setup must be
+    inside the clip. Open on the action or the reaction, never on a loading screen or menu.
+    Do not pick story cutscenes or mission endings: story spoilers in launch week get reported.
+    Avoid moments that depend on reading chat to understand.
+  candidates: 10
+  supercut: {enabled: false}        # compilations suit talk shows more than gameplay
+  tighten: {enabled: false}         # gameplay keeps happening during silence; never cut it
+  headline:
+    enabled: true
+    style: "what happens, short and punchy, e.g. 'He did NOT expect this in GTA 6'"
+  cold_open: true
+  end_on_payoff: true
+  learn_from_top_clips: true
+
+overlays: {}                        # add `watermark:` only if the campaign requires one
+caption:
+  first_line_must_contain: null     # set to the streamer's @handle if the campaign requires it
+  hashtags: ["#gta6", "#gtavi", "#gaming"]
+  templates:
+    - "{hook}\n{question} 👇\n{hashtags}"
+    - "{hook} 😭\n{question}\n{hashtags}"
+pinned_comment: {platforms: [], replies: []}
+preferences: {styles: [big_reaction, funny_fail, chaos, shock]}
+clip: {min_seconds: 15, max_seconds: 60}
+forbid: [spoilers, ad_like]
+banned_words: []
+submit_within_minutes: 30
+min_live_days: 30

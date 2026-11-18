@@ -31,7 +31,9 @@ class Sentence:
 def _assemblyai(audio: Path) -> list[dict]:
     import assemblyai as aai
     aai.settings.api_key = get_settings().assemblyai_api_key
-    t = aai.Transcriber().transcribe(str(audio), aai.TranscriptionConfig(speaker_labels=True))
+    # language detection: streamers are not always English (the GTA board has French ones)
+    config = aai.TranscriptionConfig(speaker_labels=True, language_detection=True)
+    t = aai.Transcriber().transcribe(str(audio), config)
     if t.status == aai.TranscriptStatus.error:
         raise RuntimeError(f"AssemblyAI failed: {t.error}")
     return [{"text": w.text, "start": w.start / 1000, "end": w.end / 1000,

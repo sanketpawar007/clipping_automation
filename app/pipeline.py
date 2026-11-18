@@ -62,19 +62,37 @@ def _save_candidates(workdir, windows: list[select.Window], sents) -> None:
     (workdir / "candidates.json").write_text(db.dumps(rows))
 
 
+def stream_profile(camp: campaigns.Campaign, meta: dict, workdir) -> dict:
+    """Layout for this video: the campaign's profile file if it names one; for gaming campaigns
+    without one, detected from the video itself (once, then cached in meta.json)."""
+    if camp.profile:
+        return campaigns.load_profile(camp.profile)
+    if camp.niche != "gaming":
+        return {}
+    if "layout" not in meta:
+        from app.core import reframe
+        info = media.probe(meta["path"])
+        meta["layout"] = reframe.detect_stream_layout(meta["path"], info["duration"],
+                                                      info["width"], info["height"])
+        (workdir / "meta.json").write_text(db.dumps(meta))
+    return meta["layout"]
+
+
 def run(url: str, campaign_slug: str, n_clips: int | None = None, with_captions: bool = True,
-        only_kind: str | None = None) -> list[int]:
+        only_kind: str | None = None, start: float | None = None, end: float | None = None) -> list[int]:
     t0 = time.time()
     s = get_settings()
     camp = campaigns.load(campaign_slug)
-    profile = campaigns.load_profile(camp.profile)
     weights = camp.signal_weights()
     n_clips = n_clips or camp.editing.candidates
 
     _step("downloading video, heatmap and comments", t0)
-    meta = vod.ingest(url)
+    meta = vod.ingest(url, start=start, end=end)
     workdir = vod.video_dir(meta["video_id"])
     src = meta["path"]
+    profile = stream_profile(camp, meta, workdir)
+    if profile.get("detected"):
+        _step(f"layout: {profile['layout']} ({profile['detected']})", t0)
     with db.connect() as conn:
         conn.execute(
             """INSERT INTO videos (url, video_id, title, duration, campaign, path, status, created_at)
@@ -219,8 +237,11 @@ def rerender(status: str = "pending") -> int:
             console.print(f"[yellow]clip #{r['id']}: source files missing, skipped[/]")
             continue
         segs = [tuple(x) for x in db.loads(r["segments"], [])]
+        meta_path = Path(r["src"]).parent / "meta.json"
+        meta = json.loads(meta_path.read_text()) if meta_path.exists() else {"path": r["src"]}
+        profile = stream_profile(camp, meta, meta_path.parent)
         out = render.render_clip(r["src"], segs, json.loads(words_path.read_text()), Path(r["path"]),
-                                 camp, campaigns.load_profile(camp.profile), True, r["headline"] or "")
+                                 camp, profile, True, r["headline"] or "")
         sig = db.loads(r["signals"], {})
         report = check.check(camp, caption=r["caption"], duration=out["duration"], render=out,
                              clip_text=sig.get("text", ""), spoiler=bool(r["spoiler"]),

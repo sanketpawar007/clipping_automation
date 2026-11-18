@@ -121,3 +121,67 @@ def build_filter(src: str | Path, start: float, end: float, w: int, h: int,
             f"[a]scale={OUT_W}:{OUT_H}:force_original_aspect_ratio=increase,crop={OUT_W}:{OUT_H},"
             f"boxblur=24:4,eq=brightness=-0.08[bg];"
             f"[b]scale={OUT_W}:-2[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2,setsar=1[v]"), "blur"
+
+
+def _detect_boxes(src: str | Path, times: list[float], w: int, h: int) -> list[list[tuple]]:
+    """Face boxes (x, y, w, h as fractions of the frame) at each of the given times."""
+    det_h = int(round(DET_W * h / w / 2) * 2)
+    det = cv2.FaceDetectorYN.create(str(MODEL), "", (DET_W, det_h), 0.7, 0.3, 50)
+    frame_bytes = DET_W * det_h * 3
+    out = []
+    for t in times:
+        p = subprocess.run(
+            [get_settings().ffmpeg, "-v", "error", "-ss", f"{t:.2f}", "-i", str(src), "-frames:v", "1",
+             "-vf", f"scale={DET_W}:{det_h}", "-f", "rawvideo", "-pix_fmt", "bgr24", "-"],
+            capture_output=True)
+        if len(p.stdout) < frame_bytes:
+            out.append([])
+            continue
+        frame = np.frombuffer(p.stdout, np.uint8, frame_bytes).reshape(det_h, DET_W, 3)
+        _, faces = det.detect(frame)
+        out.append([(f[0] / DET_W, f[1] / det_h, f[2] / DET_W, f[3] / det_h)
+                    for f in (faces if faces is not None else [])])
+    return out
+
+
+def detect_stream_layout(src: str | Path, duration: float, w: int, h: int, samples: int = 40) -> dict:
+    """Works out a streamer's layout from the video itself, so no profile file is needed.
+
+    - A small face that stays in the same spot in most frames is a facecam overlay:
+      facecam on top, gameplay below.
+    - A large face on screen most of the time is an IRL or just-chatting stream: follow the face.
+    - Otherwise it is gameplay only: whole frame over a blurred copy.
+    Game characters have faces too, but they move around, so they fail the "same spot" test."""
+    times = [duration * (i + 0.5) / samples for i in range(samples)]
+    frames = _detect_boxes(src, times, w, h)
+    small = [b for faces in frames for b in faces if b[2] < 0.22]
+    big_share = sum(1 for faces in frames if any(b[2] >= 0.22 for b in faces)) / samples
+
+    if small:
+        # the most common small-face position, then how often a face is there
+        cx = np.array([b[0] + b[2] / 2 for b in small])
+        cy = np.array([b[1] + b[3] / 2 for b in small])
+        best = max(range(len(small)),
+                   key=lambda i: int(np.sum((np.abs(cx - cx[i]) < 0.04) & (np.abs(cy - cy[i]) < 0.05))))
+        near = [b for b, x, y in zip(small, cx, cy)
+                if abs(x - cx[best]) < 0.04 and abs(y - cy[best]) < 0.05]
+        share = sum(1 for faces in frames
+                    if any(abs(b[0] + b[2] / 2 - cx[best]) < 0.04 and abs(b[1] + b[3] / 2 - cy[best]) < 0.05
+                           for b in faces)) / samples
+        if share >= 0.4:
+            fx = float(np.median([b[0] + b[2] / 2 for b in near]))
+            fy = float(np.median([b[1] + b[3] / 2 for b in near]))
+            fw = float(np.median([b[2] for b in near]))
+            fh = float(np.median([b[3] for b in near]))
+            # a webcam frame is roughly 3 face-widths wide, 4:3, face a little above centre
+            bw = min(1.0, fw * 3.2)
+            bh = min(1.0, bw * w * 0.75 / h)
+            bx = float(np.clip(fx - bw / 2, 0, 1 - bw))
+            by = float(np.clip(fy + fh * 0.2 - bh / 2, 0, 1 - bh))
+            # keep the gameplay under the cam rather than the side the cam covers
+            focus = 0.5 if 0.3 < fx < 0.7 else (0.6 if fx < 0.3 else 0.4)
+            return {"layout": "facecam_top", "facecam": {"x": bx, "y": by, "w": bw, "h": bh},
+                    "gameplay_focus_x": focus, "detected": f"facecam in {share:.0%} of frames"}
+    if big_share >= 0.5:
+        return {"layout": "track", "detected": f"large face in {big_share:.0%} of frames"}
+    return {"layout": "blur", "detected": "no steady facecam: gameplay only"}

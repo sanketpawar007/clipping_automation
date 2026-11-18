@@ -44,11 +44,14 @@ def campaigns(top: int = 15, category: str = typer.Option("", help="Filter, e.g.
 def clip(url: str, campaign: str = typer.Option(..., "--campaign", "-c", help="campaigns/<name>.yaml"),
          n: int = typer.Option(0, help="How many clips to make (0 = the campaign's setting)."),
          no_captions: bool = typer.Option(False, help="Skip burned-in captions."),
-         only: str = typer.Option("", help="Render only this kind: single or supercut.")) -> None:
+         only: str = typer.Option("", help="Render only this kind: single or supercut."),
+         start: str = typer.Option("", help="Long streams: where to start, e.g. 2:00:00"),
+         end: str = typer.Option("", help="Long streams: where to stop, e.g. 5:00:00 (4 hours max)")) -> None:
     """Turn one video URL into ready-to-review clips for a campaign."""
     from app import pipeline
+    from app.ingest.vod import parse_time
     pipeline.run(url, campaign, n_clips=n or None, with_captions=not no_captions,
-                 only_kind=only or None)
+                 only_kind=only or None, start=parse_time(start), end=parse_time(end))
 
 
 @app.command()
