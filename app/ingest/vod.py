@@ -76,7 +76,7 @@ def ingest(url: str, max_height: int = 1080, max_comments: int = 300,
         cookies = Path(s.ytdlp_cookies_file).expanduser()
         if not cookies.exists():
             raise FileNotFoundError(f"YTDLP_COOKIES_FILE points to a missing file: {cookies}")
-        from app.live.recorder import _cookie_copy     # yt-dlp rewrites its cookie file: use a copy
+        from app.live.recorder import _cookie_copy  # yt-dlp rewrites its cookie file: use a copy
         base["cookiefile"] = _cookie_copy()
     # Already downloaded? Then do not contact the site at all.
     known = _offline_id(url)

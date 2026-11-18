@@ -178,6 +178,7 @@ def youtube_vod_pass(slug: str, video_id: str, chunk_s: int = 4 * 3600) -> None:
     console.print(f"[{slug}] stream ended: clipping the saved broadcast {url}")
     telegram.send_text(f"⚫ Stream ended. Clipping the saved broadcast now: {url}")
     import yt_dlp
+
     from app.live.recorder import _cookie_copy
     with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True, "cookiefile": _cookie_copy()}) as y:
         duration = float(y.extract_info(url, download=False).get("duration") or 0)
