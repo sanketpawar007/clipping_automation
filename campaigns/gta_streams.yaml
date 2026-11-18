@@ -5,8 +5,9 @@
 id: ""
 name: GTA VI streamer clips (Vice Vision)
 niche: gaming                       # weights loudness and the video judge above the transcript
-accounts: {youtube: vicevisionclips, instagram: vicevisionclips, tiktok: vicevisionclips}
-platforms: [instagram, youtube, tiktok]
+page: hypereplayhq
+accounts: {youtube: hypereplayhq, instagram: hypereplayhq}
+platforms: [instagram, youtube]
 sources: []                         # the permitted streamer's Twitch/Kick/YouTube channel URLs
 payout_cpm: {}
 # profile: <name>                   # optional profiles/<name>.yaml; without it the layout

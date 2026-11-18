@@ -3,8 +3,9 @@ id: a5c63fad-cd53-4b81-9305-4a2d1696872a
 name: LACY GTA VI Marathon
 niche: gaming
 streamer: LACY
-accounts: {youtube: vicevisionclips, instagram: vicevisionclips, tiktok: vicevisionclips}
-platforms: [tiktok, instagram, youtube]
+page: hypereplayhq                 # streamer clips go to Hype Replay (never the same clip on two pages)
+accounts: {youtube: hypereplayhq, instagram: hypereplayhq}
+platforms: [instagram, youtube]
 sources: ["https://www.twitch.tv/lacy"]
 payout_cpm: {}                       # pool: split by approved views, 750K views minimum
 editing:

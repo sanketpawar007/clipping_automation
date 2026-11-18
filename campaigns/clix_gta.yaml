@@ -3,8 +3,9 @@ id: 985dc674-c75e-44fc-ac87-1b1506324389
 name: Clix GTA VI Marathon
 niche: gaming
 streamer: Clix
-accounts: {youtube: vicevisionclips, instagram: vicevisionclips, tiktok: vicevisionclips}
-platforms: [tiktok, instagram, youtube]
+page: hypereplayhq                 # streamer clips go to Hype Replay (never the same clip on two pages)
+accounts: {youtube: hypereplayhq, instagram: hypereplayhq}
+platforms: [instagram, youtube]
 sources: ["https://www.twitch.tv/clix"]
 payout_cpm: {}                       # pool: split by approved views, 400K views minimum
 editing:

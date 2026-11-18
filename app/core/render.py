@@ -7,6 +7,7 @@ from pathlib import Path
 
 from app.config import ROOT, get_settings
 from app.core import captions, edit, media, reframe
+from app.rules import campaign as campaigns
 from app.rules.campaign import Campaign
 
 WM_POS = {
@@ -130,9 +131,14 @@ def render_clip(src: str | Path, segs: list[tuple[float, float]], words: list[di
     warn_y, cta_y = (1000, 1180) if facecam else (560, 1300)
     if spoiler and ed.spoiler_warning:
         extra.append(captions.overlay("Warn", "SPOILER WARNING", 0, min(2.0, out_dur), 540, warn_y))
+    brand = campaigns.load_brand(campaign.page)
+    end_from = max(0.0, out_dur - 2.8)
     if ed.cta and out_dur > 6:
-        extra.append(captions.overlay("Cta", ed.cta, max(0.0, out_dur - 2.8), out_dur, 540, cta_y,
-                                      fade=150))
+        extra.append(captions.overlay("Cta", ed.cta, end_from, out_dur, 540, cta_y, fade=150))
+    if brand.follow and out_dur > 6:
+        # the page's own sign-off, under the campaign's call to action
+        extra.append(captions.overlay("Follow", brand.follow, end_from, out_dur, 540,
+                                      cta_y + (150 if ed.cta else 0), fade=150))
     title_style = style.get("title", "box")
     show_headline = bool(headline) and ed.headline.enabled and title_style != "none"
     if (with_captions and out_words) or show_headline or extra:
@@ -147,7 +153,12 @@ def render_clip(src: str | Path, segs: list[tuple[float, float]], words: list[di
                                  headline=headline if show_headline else "", head_margin=head,
                                  overlays=extra,
                                  head_style="HeadPlain" if title_style == "plain" or pip else "Head",
-                                 highlight=captions.ACCENTS[seed % len(captions.ACCENTS)],
+                                 highlight=captions.ass_colour(brand.highlight[seed % len(brand.highlight)],
+                                                              inline=True),
+                                 colours={"head_text": captions.ass_colour(brand.title_text),
+                                          "head_box": captions.ass_colour(brand.title_box),
+                                          "end_text": captions.ass_colour(brand.end_text),
+                                          "end_box": captions.ass_colour(brand.end_box)},
                                  # a reveal's title shows for the first seconds only
                                  headline_until=min(3.5, out_dur) if fmt == "reveal" else None)
         chain.append(f"[{vlast}]ass=filename='{_esc(ass)}'[c]")

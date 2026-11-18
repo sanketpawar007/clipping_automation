@@ -4,8 +4,9 @@ id: 051002dd-5c46-43d0-a446-43f2957ba3a9
 name: Dasgasd3m x RUCKUS GTA 6
 niche: gaming
 streamer: Dom (dasgasd3m)
-accounts: {youtube: vicevisionclips, tiktok: vicevisionclips}
-platforms: [tiktok, youtube]          # no Instagram on this campaign
+page: hypereplayhq                 # streamer clips go to Hype Replay (never the same clip on two pages)
+accounts: {youtube: hypereplayhq, instagram: hypereplayhq}
+platforms: [youtube]          # no Instagram on this campaign
 sources: ["https://kick.com/dasgasd3m"]
 payout_cpm: {tiktok: 1.00, youtube: 1.00}   # $10 min (10K views), $100 max
 editing:

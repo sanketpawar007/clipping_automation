@@ -128,6 +128,23 @@ class Live(BaseModel):
     send_to_phone: bool = True       # send each live clip to Telegram straight away
 
 
+class Brand(BaseModel):
+    """A page's look (brands.yaml), so each page is recognisable and they never look alike."""
+    name: str = ""
+    title_text: str = "#101010"
+    title_box: str = "#FFFFFF"
+    highlight: list[str] = ["#FFE600"]
+    end_text: str = "#FFFFFF"
+    end_box: str = "#2B3AE8"
+    follow: str = ""
+
+
+def load_brand(page: str | None) -> Brand:
+    path = ROOT / "brands.yaml"
+    data = yaml.safe_load(path.read_text()) if path.exists() else {}
+    return Brand(**(data or {}).get(page or "", {}))
+
+
 class Campaign(BaseModel):
     slug: str = ""
     id: str = ""
@@ -151,6 +168,7 @@ class Campaign(BaseModel):
     min_live_days: int = 0
     posting_notes: list[str] = []             # rules to follow when posting, shown in the post guide
     streamer: str = ""                        # who the clips must feature (gaming campaigns)
+    page: str = ""                            # which of our pages posts these clips (brands.yaml)
     mode: str = "clip"                        # clip (cut long videos) | music_edit (beat-synced edits)
     posting: str = "phone"                    # phone | api: music edits must be posted by hand
     live: Live = Field(default_factory=Live)

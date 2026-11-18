@@ -52,8 +52,9 @@ All accounts are on Content Rewards user **sanketpc5** (earlier shown as sanket.
 | Brand | Niche | Gmail | YouTube | Instagram | Status |
 |---|---|---|---|---|---|
 | **LHM Truth Bombs** | Let Him Mansplain campaign (dedicated) | lhmtruthbombs@gmail.com | @lhmtruthbombs (UCbHFtIHEM4gsX6cH0TR8erA) | @lhmtruthbombs (Creator) | Warm-up. IG bio link still to add from the phone. YouTube phone verification pending |
-| **Hype Replay** | Gaming and streamers, **becomes the GTA VI page** | hypereplayhq@gmail.com | @hypereplayhq (UCjcBL0GF-yY64dyyDGcOtrw) | @hypereplayhq (Creator, Gaming video creator) | Ready |
-| **Money Cuts** | Business, money, podcasts | moneycutshq@gmail.com | @moneycutshq (UCJp4UJS7KEEuz1G7my-Qp4Q) | @moneycutshq (Creator, Entrepreneur) | Ready. YouTube phone-verified |
+| **Hype Replay** | **GTA VI** stream chaos, fails, funniest moments (red/black) | hypereplayhq@gmail.com | @hypereplayhq (UCjcBL0GF-yY64dyyDGcOtrw) "Hype Replay \| GTA 6 Stream Moments" | @hypereplayhq (Creator, Gaming video creator) | Rebranded 18 Nov |
+| **Six Decoded** (was Money Cuts) | **GTA VI** news, secrets, hidden details (teal/navy) | moneycutshq@gmail.com | @sixdecodedhq (UCJp4UJS7KEEuz1G7my-Qp4Q) "Six Decoded \| GTA 6 News & Secrets" | @sixdecodedhq (Creator, Gaming video creator) | Rebranded 18 Nov. YouTube phone-verified |
+| **Vice Vision** | **GTA VI** edits, music edits (Tokyo Girl), Jason & Lucia (pink sunset) | vicevisionclipshq@gmail.com | @vicevisionclips (UCFVUnBUodu_GF27Pv3vb72Q) | @vicevisionclips (Creator) + TikTok @vicevisionclips | Main GTA page |
 
 Brand images and the generator scripts are in `brand/`.
 

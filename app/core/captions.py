@@ -17,9 +17,11 @@ ScaledBorderAndShadow: yes
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: Cap,{font},{size},&H00FFFFFF,&H00FFFFFF,&H00000000,&H96000000,-1,0,0,0,100,100,0,0,1,7,3,2,60,60,{margin_v},1
-Style: Head,{font},74,&H00101010,&H00101010,&H00FFFFFF,&H00FFFFFF,-1,0,0,0,100,100,0,0,3,18,0,2,70,70,{head_margin},1
+Style: Head,{font},74,{head_text},{head_text},{head_box},{head_box},-1,0,0,0,100,100,0,0,3,18,0,2,70,70,{head_margin},1
 Style: HeadPlain,{font},70,&H00FFFFFF,&H00FFFFFF,&H00000000,&H64000000,-1,0,0,0,100,100,0,0,1,6,3,2,70,70,{head_margin},1
-Style: Cta,{font},72,&H00FFFFFF,&H00FFFFFF,&H00E83A2B,&H00E83A2B,-1,0,0,0,100,100,0,0,3,22,0,5,80,80,0,1
+Style: Cta,{font},72,{end_text},{end_text},{end_box},{end_box},
+Style: Follow,{font},50,&H00FFFFFF,&H00FFFFFF,&H00000000,&H64000000,-1,0,0,0,100,100,0,0,1,5,2,5,80,80,0,1
+Style: CtaOld,{font},72,&H00FFFFFF,&H00FFFFFF,&H00E83A2B,&H00E83A2B,-1,0,0,0,100,100,0,0,3,22,0,5,80,80,0,1
 Style: Credit,{font},42,&H00FFFFFF,&H00FFFFFF,&H00000000,&H64000000,-1,0,0,0,100,100,0,0,1,4,2,7,50,50,0,1
 Style: Label,{font},36,&H00FFFFFF,&H00FFFFFF,&H00000000,&H96000000,-1,0,0,0,100,100,0,0,3,10,0,9,50,50,0,1
 Style: Warn,{font},64,&H0000E6FF,&H0000E6FF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,3,18,0,5,80,80,0,1
@@ -80,6 +82,13 @@ def _strip(text: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"[{}\\\n]", " ", text)).strip()
 
 
+def ass_colour(hex_rgb: str, inline: bool = False) -> str:
+    """'#RRGGBB' -> ASS colour (&H00BBGGRR for styles, &HBBGGRR& inside text)."""
+    h = hex_rgb.lstrip("#").upper()
+    bgr = h[4:6] + h[2:4] + h[0:2]
+    return f"&H{bgr}&" if inline else f"&H00{bgr}"
+
+
 def overlay(style: str, text: str, start: float, end: float, x: int, y: int, fade: int = 0) -> dict:
     return {"style": style, "text": text, "start": start, "end": end, "x": x, "y": y, "fade": fade}
 
@@ -88,12 +97,15 @@ def write_ass(words: list[dict], clip_start: float, clip_end: float, path: Path,
               font: str = "Arial Black", size: int = 86, margin_v: int = 560,
               headline: str = "", head_margin: int | None = None,
               overlays: list[dict] | None = None, head_style: str = "Head",
-              highlight: str = HIGHLIGHT, headline_until: float | None = None) -> Path:
+              highlight: str = HIGHLIGHT, headline_until: float | None = None,
+              colours: dict | None = None) -> Path:
     """`words` use source-video times; captions are written relative to the clip start.
     `headline` is shown for the whole clip: black text on a white box."""
     inside = [w for w in words if w["end"] > clip_start and w["start"] < clip_end]
     # the headline sits just above the captions, clear of faces at the top of the frame
-    lines = [HEADER.format(font=font, size=size, margin_v=margin_v,
+    c = {"head_text": "&H00101010", "head_box": "&H00FFFFFF", "end_text": "&H00FFFFFF",
+         "end_box": "&H00E83A2B", **(colours or {})}
+    lines = [HEADER.format(font=font, size=size, margin_v=margin_v, **c,
                            head_margin=head_margin if head_margin is not None else margin_v + 150)]
     for o in overlays or []:
         fade = f"\\fad({o['fade']},0)" if o.get("fade") else ""

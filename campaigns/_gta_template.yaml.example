@@ -4,8 +4,9 @@
 id: ""                              # campaign uuid from the Content Rewards URL
 name: ""
 niche: gaming                       # weights chat/audio/video signals above the transcript
-accounts: {youtube: vicevisionclips, instagram: vicevisionclips, tiktok: vicevisionclips}
-platforms: [instagram, youtube, tiktok]
+page: hypereplayhq
+accounts: {youtube: hypereplayhq, instagram: hypereplayhq}
+platforms: [instagram, youtube]
 sources: []                         # the streamer's channel URLs
 payout_cpm: {instagram: 0, youtube: 0}
 profile: example_streamer           # profiles/<name>.yaml: facecam + gameplay layout

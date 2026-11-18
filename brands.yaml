@@ -1,0 +1,35 @@
+# Per-page look, so the three GTA VI pages never look alike. Colours are normal hex (#RRGGBB).
+# A campaign picks its page with `page:`; clips are styled with that page's colours and end with
+# "Follow @handle". Pages: see PLAN.md account table and campaigns/briefs/HANDOFF_gta_vice_vision.md §5.
+hypereplayhq:
+  name: Hype Replay
+  title_text: "#FFFFFF"        # title box: white text on red
+  title_box: "#E10600"
+  highlight: ["#FF2A2A", "#FFFFFF"]   # spoken-word highlight colours, rotated per clip
+  end_text: "#FFFFFF"
+  end_box: "#111111"
+  follow: "Follow @hypereplayhq"
+vicevisionclips:
+  name: Vice Vision
+  title_text: "#FFFFFF"
+  title_box: "#FF3D8B"         # pink sunset
+  highlight: ["#FF7AB6", "#FFB347"]
+  end_text: "#FFFFFF"
+  end_box: "#7B2CBF"
+  follow: "Follow @vicevisionclips"
+sixdecodedhq:
+  name: Six Decoded
+  title_text: "#FFFFFF"
+  title_box: "#0B1F3A"         # navy
+  highlight: ["#00C2B8", "#7FFFD4"]   # teal
+  end_text: "#0B1F3A"
+  end_box: "#00C2B8"
+  follow: "Follow @sixdecodedhq"
+lhmtruthbombs:
+  name: LHM Truth Bombs
+  title_text: "#111111"
+  title_box: "#FFFFFF"
+  highlight: ["#FFE600"]
+  end_text: "#FFFFFF"
+  end_box: "#2B3A67"
+  follow: ""                   # LHM pages promote the show, not themselves

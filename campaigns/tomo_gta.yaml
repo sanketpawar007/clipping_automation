@@ -3,8 +3,9 @@ id: df6de26f-86ec-4782-b818-1fc8053b99a4
 name: TOMO GTA VI
 niche: gaming
 streamer: Tomo
-accounts: {youtube: vicevisionclips, instagram: vicevisionclips, tiktok: vicevisionclips}
-platforms: [tiktok, instagram, youtube]
+page: hypereplayhq                 # streamer clips go to Hype Replay (never the same clip on two pages)
+accounts: {youtube: hypereplayhq, instagram: hypereplayhq}
+platforms: [instagram, youtube]
 sources: ["https://www.youtube.com/@Tomovids/live"]
 payout_cpm: {tiktok: 2.00, instagram: 2.00, youtube: 2.00}   # $4 min (2K views), $150 max
 editing:
