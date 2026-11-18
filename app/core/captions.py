@@ -68,8 +68,14 @@ def wrap_headline(text: str, width: int = 20, max_lines: int = 2) -> str:
     return "\\N".join(lines)
 
 
+_EMOJI = re.compile("[\U0001F000-\U0001FAFF\u2600-\u27BF\uFE0F\u200D]")
+
+
 def _strip(text: str) -> str:
-    return re.sub(r"[{}\\\n]", " ", text).strip()
+    """Text safe for burned-in titles: no ASS control characters, and no emoji (the caption font
+    has none, so they would render as empty boxes; emoji stay in the post caption)."""
+    text = _EMOJI.sub("", text)
+    return re.sub(r"\s+", " ", re.sub(r"[{}\\\n]", " ", text)).strip()
 
 
 def overlay(style: str, text: str, start: float, end: float, x: int, y: int, fade: int = 0) -> dict:
