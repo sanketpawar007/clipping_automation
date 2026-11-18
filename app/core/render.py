@@ -118,7 +118,7 @@ def render_clip(src: str | Path, segs: list[tuple[float, float]], words: list[di
         extra.append(captions.overlay("Warn", "SPOILER WARNING", 0, min(2.0, out_dur), 540, 960))
     if ed.cta and out_dur > 6:
         extra.append(captions.overlay("Cta", ed.cta, max(0.0, out_dur - 2.8), out_dur, 540,
-                                      1320 if facecam else 1000, fade=150))
+                                      1180 if facecam else 900, fade=150))
     show_headline = bool(headline) and ed.headline.enabled
     if (with_captions and out_words) or show_headline or extra:
         # facecam layout: title on the seam between the two panels, captions over the gameplay

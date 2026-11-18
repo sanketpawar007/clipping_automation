@@ -239,6 +239,9 @@ def detect_stream_layout(src: str | Path, duration: float, w: int, h: int, sampl
             bx = float(np.clip(fx + fw / 2 - bw / 2, 0, 1 - bw))
             by = float(np.clip(fy + fh / 2 - bh * 0.45, 0, 1 - bh))
             bx, by, bw, bh = _snap_to_border(greys, (bx, by, bw, bh), (fx, fy, fw, fh))
+            if bw >= 0.5 or bh >= 0.6:
+                # the "webcam" is most of the picture: a full-screen camera (just chatting / IRL)
+                return {"layout": "track", "detected": f"full-screen camera ({share:.0%} of frames)"}
             face_cx = fx + fw / 2
             # keep the gameplay under the cam rather than the side the cam covers
             focus = 0.5 if 0.3 < face_cx < 0.7 else (0.6 if face_cx < 0.3 else 0.4)
