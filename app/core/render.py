@@ -128,17 +128,17 @@ def render_clip(src: str | Path, segs: list[tuple[float, float]], words: list[di
         extra.append(captions.overlay("Label", ed.disclosure, 0, out_dur, 1030, 230))
     # positions: facecam layout = title on the panel seam, captions over the gameplay;
     # face-tracked / full-frame = title at the top, captions in the lower third, clear of the face
-    warn_y, cta_y = (1000, 1180) if facecam else (560, 1300)
+    warn_y, cta_y = (1000, 1060) if facecam else (560, 1120)   # end card sits above the captions
     if spoiler and ed.spoiler_warning:
         extra.append(captions.overlay("Warn", "SPOILER WARNING", 0, min(2.0, out_dur), 540, warn_y))
     brand = campaigns.load_brand(campaign.page)
     end_from = max(0.0, out_dur - 2.8)
     if ed.cta and out_dur > 6:
-        extra.append(captions.overlay("Cta", ed.cta, end_from, out_dur, 540, cta_y, fade=150))
+        extra.append(captions.overlay("Cta", ed.cta, end_from, out_dur, 540, cta_y, fade=150, width=26))
     if brand.follow and out_dur > 6:
         # the page's own sign-off, under the campaign's call to action
         extra.append(captions.overlay("Follow", brand.follow, end_from, out_dur, 540,
-                                      cta_y + (150 if ed.cta else 0), fade=150))
+                                      cta_y + (150 if ed.cta else 0), fade=150, width=34))
     title_style = style.get("title", "box")
     show_headline = bool(headline) and ed.headline.enabled and title_style != "none"
     if (with_captions and out_words) or show_headline or extra:

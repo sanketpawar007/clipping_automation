@@ -19,9 +19,8 @@ Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour,
 Style: Cap,{font},{size},&H00FFFFFF,&H00FFFFFF,&H00000000,&H96000000,-1,0,0,0,100,100,0,0,1,7,3,2,60,60,{margin_v},1
 Style: Head,{font},74,{head_text},{head_text},{head_box},{head_box},-1,0,0,0,100,100,0,0,3,18,0,2,70,70,{head_margin},1
 Style: HeadPlain,{font},70,&H00FFFFFF,&H00FFFFFF,&H00000000,&H64000000,-1,0,0,0,100,100,0,0,1,6,3,2,70,70,{head_margin},1
-Style: Cta,{font},72,{end_text},{end_text},{end_box},{end_box},
+Style: Cta,{font},68,{end_text},{end_text},{end_box},{end_box},-1,0,0,0,100,100,0,0,3,22,0,5,80,80,0,1
 Style: Follow,{font},50,&H00FFFFFF,&H00FFFFFF,&H00000000,&H64000000,-1,0,0,0,100,100,0,0,1,5,2,5,80,80,0,1
-Style: CtaOld,{font},72,&H00FFFFFF,&H00FFFFFF,&H00E83A2B,&H00E83A2B,-1,0,0,0,100,100,0,0,3,22,0,5,80,80,0,1
 Style: Credit,{font},42,&H00FFFFFF,&H00FFFFFF,&H00000000,&H64000000,-1,0,0,0,100,100,0,0,1,4,2,7,50,50,0,1
 Style: Label,{font},36,&H00FFFFFF,&H00FFFFFF,&H00000000,&H96000000,-1,0,0,0,100,100,0,0,3,10,0,9,50,50,0,1
 Style: Warn,{font},64,&H0000E6FF,&H0000E6FF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,3,18,0,5,80,80,0,1
@@ -89,8 +88,10 @@ def ass_colour(hex_rgb: str, inline: bool = False) -> str:
     return f"&H{bgr}&" if inline else f"&H00{bgr}"
 
 
-def overlay(style: str, text: str, start: float, end: float, x: int, y: int, fade: int = 0) -> dict:
-    return {"style": style, "text": text, "start": start, "end": end, "x": x, "y": y, "fade": fade}
+def overlay(style: str, text: str, start: float, end: float, x: int, y: int, fade: int = 0,
+            width: int = 22) -> dict:
+    return {"style": style, "text": text, "start": start, "end": end, "x": x, "y": y, "fade": fade,
+            "width": width}
 
 
 def write_ass(words: list[dict], clip_start: float, clip_end: float, path: Path,
@@ -110,7 +111,7 @@ def write_ass(words: list[dict], clip_start: float, clip_end: float, path: Path,
     for o in overlays or []:
         fade = f"\\fad({o['fade']},0)" if o.get("fade") else ""
         lines.append(f"Dialogue: 2,{_ts(o['start'])},{_ts(o['end'])},{o['style']},,0,0,0,,"
-                     f"{{\\pos({o['x']},{o['y']}){fade}}}{wrap_headline(o['text'], 22, 3)}\n")
+                     f"{{\\pos({o['x']},{o['y']}){fade}}}{wrap_headline(o['text'], o.get('width', 22), 3)}\n")
     if headline:
         until = clip_end - clip_start if headline_until is None else headline_until
         fade = "{\\fad(150,250)}" if headline_until is not None else ""
