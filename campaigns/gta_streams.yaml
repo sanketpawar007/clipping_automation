@@ -31,6 +31,8 @@ editing:
   cold_open: true
   end_on_payoff: true
   learn_from_top_clips: true
+  video_editor: true
+  min_virality: 6
 
 overlays: {}                        # add `watermark:` only if the campaign requires one
 caption:

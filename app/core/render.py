@@ -14,7 +14,17 @@ WM_POS = {
     "bottom_right": "W-w-40:H-h-420", "bottom_left": "40:H-h-420",
     "top_center": "(W-w)/2:150",
 }
-SEAM_MARGIN = reframe.OUT_H - 760 - 60     # caption position when a facecam panel is on top
+
+
+def _out_times(t: float, kept: list[list[tuple[float, float]]]) -> list[float]:
+    """Where source time `t` lands in the output (more than once if footage repeats, e.g. a teaser)."""
+    out, offset = [], 0.0
+    for pieces in kept:
+        for a, b in pieces:
+            if a <= t < b:
+                out.append(offset + t - a)
+            offset += b - a
+    return out
 
 
 def _esc(path: Path) -> str:
@@ -29,7 +39,8 @@ def _relabel(graph: str, i: int) -> str:
 
 def render_clip(src: str | Path, segs: list[tuple[float, float]], words: list[dict],
                 out: Path, campaign: Campaign, profile: dict | None = None,
-                with_captions: bool = True, headline: str = "") -> dict:
+                with_captions: bool = True, headline: str = "", zooms: list[float] | None = None,
+                spoiler: bool = False) -> dict:
     """`segs` are source-time segments played in order (one for a plain clip, several for a
     supercut or a cold open)."""
     s = get_settings()
@@ -84,12 +95,39 @@ def render_clip(src: str | Path, segs: list[tuple[float, float]], words: list[di
         kept = [[seg] for seg in segs]
 
     out_words, out_dur = edit.remap_words(words, kept)
+
+    # Punch-in zooms on peak reactions, mapped from source time to the output timeline.
+    zt = [o for z in (zooms or []) for o in _out_times(z, kept)]
+    if zt and ed.zoom > 0:
+        a_in, hold, a_out = 0.12, 0.8, 0.25
+        bumps = "+".join(
+            f"{ed.zoom}*clip((T-{t - a_in:.3f})/{a_in},0,1)*clip(({t + hold:.3f}-T)/{a_out},0,1)" for t in zt)
+        z_expr = f"1+{bumps}".replace("T", f"(on/{fps})")
+        chain.append(f"[{vlast}]zoompan=z='{z_expr}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
+                     f":d=1:s={reframe.OUT_W}x{reframe.OUT_H}:fps={fps}[zv]")
+        vlast = "zv"
+
+    # On-screen text the campaign asks for: credit, paid label, spoiler warning, end card.
+    facecam = "facecam_top" in layouts
+    extra: list[dict] = []
+    if ed.credit:
+        extra.append(captions.overlay("Credit", ed.credit, 0, out_dur, 50, 230))
+    if ed.disclosure:
+        extra.append(captions.overlay("Label", ed.disclosure, 0, out_dur, 1030, 230))
+    if spoiler and ed.spoiler_warning:
+        extra.append(captions.overlay("Warn", "SPOILER WARNING", 0, min(2.0, out_dur), 540, 960))
+    if ed.cta and out_dur > 6:
+        extra.append(captions.overlay("Cta", ed.cta, max(0.0, out_dur - 2.8), out_dur, 540,
+                                      1320 if facecam else 1000, fade=150))
     show_headline = bool(headline) and ed.headline.enabled
-    if (with_captions and out_words) or show_headline:
-        margin = SEAM_MARGIN if "facecam_top" in layouts else 560
+    if (with_captions and out_words) or show_headline or extra:
+        # facecam layout: title on the seam between the two panels, captions over the gameplay
+        margin = 470 if facecam else 560
+        head = reframe.OUT_H - reframe.FACECAM_H - 45 if facecam else None
         ass = captions.write_ass(out_words if with_captions else [], 0.0, out_dur,
                                  out.with_suffix(".ass"), font=s.caption_font, margin_v=margin,
-                                 headline=headline if show_headline else "")
+                                 headline=headline if show_headline else "", head_margin=head,
+                                 overlays=extra)
         chain.append(f"[{vlast}]ass=filename='{_esc(ass)}'[c]")
         vlast = "c"
 
@@ -106,8 +144,8 @@ def render_clip(src: str | Path, segs: list[tuple[float, float]], words: list[di
         vlast, wm_applied = "o", True
 
     media.run([s.ffmpeg, "-y", "-v", "error", *inputs, "-filter_complex", ";".join(chain),
-               "-map", f"[{vlast}]", "-map", f"[{alast}]", "-c:v", "libx264", "-preset", "veryfast",
-               "-crf", "21", "-maxrate", "5M", "-bufsize", "10M", "-pix_fmt", "yuv420p",
+               "-map", f"[{vlast}]", "-map", f"[{alast}]", "-c:v", "libx264", "-preset", "fast",
+               "-crf", "18", "-maxrate", "12M", "-bufsize", "24M", "-pix_fmt", "yuv420p",
                "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", str(out)])
     return {"layout": "+".join(dict.fromkeys(layouts)), "watermark": wm_applied,
             "captions": with_captions and bool(out_words), "headline": show_headline,

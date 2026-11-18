@@ -21,6 +21,9 @@ editing:
   cold_open: true
   end_on_payoff: true
   learn_from_top_clips: true
+  video_editor: true
+  min_virality: 6
+  cta: "Follow LACY on Twitch"
 overlays: {}                         # "Logos of any kind are not allowed": no watermark
 caption:
   must_contain: ["LACY", "#LACY"]

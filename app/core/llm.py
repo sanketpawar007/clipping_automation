@@ -241,3 +241,91 @@ def video_judge(source: str | Path, start: float, end: float, workdir: Path) -> 
         return None
     finally:
         tmp.unlink(missing_ok=True)
+
+
+# ---------- video editor (gaming / streams) ----------
+
+class EditPlan(BaseModel):
+    postable: bool = Field(description="False if a stranger scrolling would not care: nothing clearly "
+                                       "happens, it needs more context than a few seconds, it is a menu, "
+                                       "loading screen or cutscene, or the streamer is not seen or heard")
+    virality: int = Field(description="0-10: chance this goes viral on Shorts/Reels/TikTok. Be strict: "
+                                       "5 is average, 8+ only for a moment people will rewatch and share")
+    start: float = Field(description="Clip start, in seconds from the start of THIS video: where the "
+                                     "setup begins, no earlier")
+    end: float = Field(description="Clip end, in seconds from the start of THIS video: right after the "
+                                   "payoff/reaction lands, before it trails off")
+    hook_start: float = Field(description="Start of a 1.5-3 second teaser to show FIRST, before the clip "
+                                          "plays from the start: the most arresting instant (usually the "
+                                          "peak reaction or punchline). -1 if the clip already opens strong")
+    hook_end: float = Field(description="End of that teaser, -1 if none")
+    headline: str = Field(description="On-screen title, max 45 characters, at most one emoji, naming the "
+                                      "streamer and the concrete situation, like a story. Must be true to "
+                                      "the footage and must not give away the punchline")
+    zooms: list[float] = Field(description="1-3 moments (seconds from the start of THIS video) of peak "
+                                           "reaction or impact where the picture should punch in")
+    what_happens: str = Field(description="One sentence: what actually happens in the clip")
+    spoiler: bool = Field(description="True if it shows a story ending, character death or plot twist")
+    explicit: bool = Field(description="True if it relies on sexual content, slurs or heavy profanity")
+    reason: str = Field(description="One sentence: why it will or will not get views")
+
+
+EDITOR_PROMPT = """You are the editor for a top streamer-clips page on TikTok, YouTube Shorts and \
+Instagram Reels. Watch AND listen to this footage from {streamer}'s live stream and plan one short \
+vertical clip, or reject it.
+
+What makes these clips go viral:
+- HOOK in the first 2 seconds: the viewer must instantly see or hear that something is about to \
+happen. Usually that means opening on a 1.5-3 second teaser of the peak moment, then playing the \
+clip from its setup.
+- ONE clear moment: a funny, crazy, surprising or emotional thing with a setup, {streamer}'s real \
+reaction and a payoff. Cut anything that needs more than a few seconds of context.
+- End right after the payoff lands. No trailing chatter, no waiting.
+- 15-45 seconds total. Shorter is better if the moment is complete.
+- {streamer} must be the focus: their face or voice reacting, not plain gameplay.
+- Titles that perform on this kind of page are short stories with the streamer's name, for \
+example: "Lacy Got Hit With A $12,000 Restaurant Bill 😭", "Lacy got SCAMMED 💔".
+{winning}
+Campaign rules and preferences:
+{brief}
+
+Transcript of this footage (seconds from the start of this video):
+{transcript}
+
+Reject (postable=false) anything a stranger would scroll past. Be strict: one great clip beats \
+ten average ones."""
+
+
+def edit_plan(source: str | Path, start: float, end: float, campaign: Campaign, transcript_lines: str,
+              workdir: Path, winning: list[dict] | None = None) -> EditPlan | None:
+    """Gemini watches and hears [start, end] of the source and plans the edit. Times in the plan
+    are relative to `start`."""
+    s = get_settings()
+    if not s.gemini_api_key:
+        return None
+    from google import genai
+    from google.genai import types
+
+    tmp = workdir / f"edit_{int(start)}.mp4"
+    media.run([s.ffmpeg, "-y", "-v", "error", "-ss", f"{start:.2f}", "-to", f"{end:.2f}",
+               "-i", str(source), "-vf", "scale=-2:480,fps=12", "-c:v", "libx264", "-crf", "28",
+               "-preset", "veryfast", "-c:a", "aac", "-b:a", "64k", "-ac", "1", str(tmp)])
+    win = ""
+    if winning:
+        win = "Top clips other clippers have posted for this campaign:\n" + "\n".join(
+            f"- {c.get('views') or 0:,} views: {(c.get('title') or '').strip()[:120]}" for c in winning[:8])
+    prompt = EDITOR_PROMPT.format(streamer=campaign.streamer or "the streamer", winning=win,
+                                  brief=campaign.editing.brief.strip(), transcript=transcript_lines)
+    try:
+        client = genai.Client(api_key=s.gemini_api_key)
+        resp = client.models.generate_content(
+            model=s.gemini_model,
+            contents=[types.Part.from_bytes(data=tmp.read_bytes(), mime_type="video/mp4"), prompt],
+            config=types.GenerateContentConfig(response_mime_type="application/json",
+                                               response_schema=EditPlan))
+        return resp.parsed
+    except Exception as exc:   # noqa: BLE001 - fall back to the transcript-based edit
+        console.print(f"[yellow]video editor skipped: {exc}[/]")
+        return None
+    finally:
+        tmp.unlink(missing_ok=True)

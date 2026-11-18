@@ -19,6 +19,7 @@ from app.config import ROOT, get_settings
 OUT_W, OUT_H = 1080, 1920
 MODEL = ROOT / "assets/models/face_detection_yunet_2023mar.onnx"
 SAMPLE_FPS = 2
+FACECAM_H = 760          # output pixels given to the facecam panel in the facecam-over-gameplay layout
 DET_W = 960
 
 
@@ -95,27 +96,29 @@ def build_filter(src: str | Path, start: float, end: float, w: int, h: int,
 
     if layout == "facecam_top" and profile.get("facecam"):
         f = profile["facecam"]
-        top_h = int(profile.get("facecam_height", 760))
+        top_h = int(profile.get("facecam_height", FACECAM_H))
         bot_h = OUT_H - top_h
         fx, fy, fw, fh = (int(f["x"] * w), int(f["y"] * h), int(f["w"] * w), int(f["h"] * h))
         gw = int(min(w, h * OUT_W / bot_h) // 2 * 2)
         gx = int(np.clip(profile.get("gameplay_focus_x", 0.5) * w - gw / 2, 0, w - gw))
         return (f"[0:v]split[a][b];"
-                f"[a]crop={fw}:{fh}:{fx}:{fy},scale={OUT_W}:{top_h}:force_original_aspect_ratio=increase,"
+                f"[a]crop={fw}:{fh}:{fx}:{fy},scale={OUT_W}:{top_h}:force_original_aspect_ratio=increase:flags=lanczos,"
+                f"unsharp=5:5:0.7:5:5:0,"
                 f"crop={OUT_W}:{top_h}[top];"
-                f"[b]crop={gw}:{h}:{gx}:0,scale={OUT_W}:{bot_h}:force_original_aspect_ratio=increase,"
+                f"[b]crop={gw}:{h}:{gx}:0,scale={OUT_W}:{bot_h}:force_original_aspect_ratio=increase:flags=lanczos,"
                 f"crop={OUT_W}:{bot_h}[bot];[top][bot]vstack,setsar=1[v]"), "facecam_top"
 
     crop_w = int(h * OUT_W / OUT_H // 2 * 2)
     if layout == "center":
-        return f"[0:v]crop={crop_w}:{h}:{(w - crop_w) // 2}:0,scale={OUT_W}:{OUT_H},setsar=1[v]", "center"
+        return (f"[0:v]crop={crop_w}:{h}:{(w - crop_w) // 2}:0,"
+                f"scale={OUT_W}:{OUT_H}:flags=lanczos,setsar=1[v]"), "center"
 
     if layout in ("auto", "track"):
         samples = _sample_faces(src, start, end, w, h)
         seen = sum(1 for s in samples if s) / max(1, len(samples))
         if seen >= 0.35:
             x = _crop_x_expr(_segments(samples), w, crop_w)
-            return f"[0:v]crop={crop_w}:{h}:{x}:0,scale={OUT_W}:{OUT_H},setsar=1[v]", "track"
+            return f"[0:v]crop={crop_w}:{h}:{x}:0,scale={OUT_W}:{OUT_H}:flags=lanczos,setsar=1[v]", "track"
 
     return (f"[0:v]split[a][b];"
             f"[a]scale={OUT_W}:{OUT_H}:force_original_aspect_ratio=increase,crop={OUT_W}:{OUT_H},"

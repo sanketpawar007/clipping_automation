@@ -78,6 +78,38 @@ def stream_profile(camp: campaigns.Campaign, meta: dict, workdir) -> dict:
     return meta["layout"]
 
 
+def _apply_plan(w: select.Window, src: str, meta: dict, camp: campaigns.Campaign, sents,
+                workdir, winners: list[dict]) -> None:
+    """Lets Gemini watch the candidate (plus some room either side) and re-cut it: tight start and
+    end, a hook teaser first, punch-in zooms, a headline. Unworthy candidates are marked."""
+    pad_before, pad_after = 12.0, 10.0
+    a = max(0.0, w.start - pad_before)
+    b = min(meta["duration"], w.end + pad_after)
+    lines = "\n".join(f"[{x.start - a:6.1f}s] {x.text}" for x in sents if a <= x.start < b)
+    plan = llm.edit_plan(src, a, b, camp, lines or "(no speech)", workdir, winners)
+    if plan is None:
+        return
+    lo, hi = camp.clip.min_seconds, camp.clip.max_seconds
+    st, en = max(0.0, plan.start), min(b - a, plan.end)
+    if en - st < lo:                                   # too short: grow around the middle
+        mid = (st + en) / 2
+        st, en = max(0.0, mid - lo / 2), min(b - a, mid + lo / 2)
+    en = min(en, st + hi)
+    segs = [(a + st, a + en)]
+    hs, he = plan.hook_start, plan.hook_end
+    if 0 <= hs < he and he - hs <= 4.0 and (hs - st) > 1.0 and st <= hs and he <= en:
+        segs.insert(0, (a + hs, a + he))              # teaser of the peak, then the clip from its setup
+    w.segs = segs
+    w.video = plan.virality / 10
+    w.headline = plan.headline or w.headline
+    w.zooms = [a + z for z in plan.zooms if st <= z <= en][:3]
+    w.reason = f"{plan.what_happens} {plan.reason}".strip()
+    w.spoiler = w.spoiler or plan.spoiler
+    w.explicit = w.explicit or plan.explicit
+    w.postable = plan.postable and plan.virality >= camp.editing.min_virality and not w.explicit \
+        and not (w.spoiler and not camp.editing.spoiler_warning)
+
+
 def run_local(path, campaign_slug: str, title: str, stream_url: str, stream_offset: float,
               n_clips: int, profile: dict | None, chat_times: list[float],
               chat_lines: list[str]) -> list[int]:
@@ -198,7 +230,18 @@ def run(url: str, campaign_slug: str, n_clips: int | None = None, with_captions:
         shortlist = reserved + rest[: max(0, n_clips + 3 - len(reserved))]
         _save_candidates(workdir, windows, sents)
 
-        if s.gemini_api_key:
+        if s.gemini_api_key and camp.editing.video_editor:
+            _step(f"video editor: Gemini watches and plans the top {len(shortlist)}", t0)
+            for w in shortlist:
+                _apply_plan(w, src, meta, camp, sents, workdir, winners)
+            active.add("video")
+            for w in shortlist:
+                w.score = select.final_score(w, weights, active)
+            kept = [w for w in shortlist if w.postable]
+            _step(f"editor kept {len(kept)} of {len(shortlist)} (needs {camp.editing.min_virality}/10)", t0)
+            shortlist = kept
+            reserved = [w for w in reserved if w in kept]
+        elif s.gemini_api_key:
             _step(f"video judge: Gemini watches the top {len(shortlist)}", t0)
             for w in shortlist:
                 a, b = max(w.segs, key=lambda seg: seg[1] - seg[0])   # its longest segment
@@ -226,7 +269,8 @@ def run(url: str, campaign_slug: str, n_clips: int | None = None, with_captions:
                   f"  {w.duration:.0f}s  score {w.score:.2f}", t0)
             tag = "sc" if w.kind == "supercut" else "c"
             out = workdir / "clips" / f"{meta['video_id']}_{tag}{int(w.start)}.mp4"
-            r = render.render_clip(src, w.segs, words, out, camp, profile, with_captions, w.headline)
+            r = render.render_clip(src, w.segs, words, out, camp, profile, with_captions, w.headline,
+                                   zooms=w.zooms, spoiler=w.spoiler)
             text = " ".join(sents[k].text for k in w.sentence_ids())
             hook = w.hook or text.split(". ")[0][:60]
             caption = check.build_caption(camp, hook, i, w.question)
@@ -243,7 +287,7 @@ def run(url: str, campaign_slug: str, n_clips: int | None = None, with_captions:
                      check.pinned_comment(camp, i), str(out), db.dumps(report),
                      db.dumps({**w.signals, "judge": w.judge, "video": w.video, "source": w.source,
                                "layout": r["layout"], "text": text, "duration": r["duration"],
-                               "cut_seconds": r["cut_seconds"], "parts": r["parts"]}),
+                               "cut_seconds": r["cut_seconds"], "parts": r["parts"], "zooms": w.zooms}),
                      int(w.spoiler), db.now(), w.kind, w.headline, db.dumps(w.segs)))
                 clip_ids.append(cur.lastrowid)
             ok = "[green]compliant[/]" if check.compliant(report) else "[red]rule issues[/]"
@@ -280,8 +324,10 @@ def rerender(status: str = "pending") -> int:
         meta_path = Path(r["src"]).parent / "meta.json"
         meta = json.loads(meta_path.read_text()) if meta_path.exists() else {"path": r["src"]}
         profile = stream_profile(camp, meta, meta_path.parent)
+        sig0 = db.loads(r["signals"], {})
         out = render.render_clip(r["src"], segs, json.loads(words_path.read_text()), Path(r["path"]),
-                                 camp, profile, True, r["headline"] or "")
+                                 camp, profile, True, r["headline"] or "", zooms=sig0.get("zooms") or [],
+                                 spoiler=bool(r["spoiler"]))
         sig = db.loads(r["signals"], {})
         report = check.check(camp, caption=r["caption"], duration=out["duration"], render=out,
                              clip_text=sig.get("text", ""), spoiler=bool(r["spoiler"]),

@@ -12,8 +12,8 @@ from app.config import ROOT
 # game sound and silence make the transcript weak (PLAN.md section 7).
 WEIGHTS = {
     "podcast": {"judge": 0.60, "heatmap": 0.14, "comments": 0.08, "loudness": 0.06, "video": 0.12},
-    "gaming": {"judge": 0.35, "heatmap": 0.10, "comments": 0.05, "loudness": 0.15, "video": 0.20,
-               "chat": 0.25},
+    "gaming": {"judge": 0.20, "heatmap": 0.05, "comments": 0.05, "loudness": 0.10, "video": 0.45,
+               "chat": 0.15},
 }
 
 
@@ -77,6 +77,14 @@ class Editing(BaseModel):
     cold_open: bool = True          # open on the strongest line, then play the moment
     end_on_payoff: bool = True      # never pad a clip past its punchline
     learn_from_top_clips: bool = True
+    # streamer clips: Gemini watches each candidate and plans the edit (hook teaser, cut, zooms)
+    video_editor: bool = False
+    min_virality: int = 6            # editor's 0-10 rating a clip needs to be kept
+    zoom: float = 0.12               # punch-in amount on peak reactions (0.12 = 12%)
+    cta: str = ""                    # end card text, shown for the last few seconds
+    credit: str = ""                 # small on-screen credit for the whole clip
+    disclosure: str = ""             # small on-screen paid-content label for the whole clip
+    spoiler_warning: bool = False    # show a spoiler warning at the start instead of dropping the clip
 
 
 class Music(BaseModel):

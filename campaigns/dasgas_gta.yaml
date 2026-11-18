@@ -22,6 +22,12 @@ editing:
   cold_open: true
   end_on_payoff: true
   learn_from_top_clips: true
+  video_editor: true
+  min_virality: 6
+  credit: "dasgasd3m on Kick"
+  disclosure: "Paid partnership"
+  spoiler_warning: true
+  cta: "Watch Dom live: kick.com/dasgasd3m"
 overlays: {}
 caption:
   must_contain: ["dasgasd3m", "kick.com/dasgasd3m", "#dasgasdom3"]
@@ -32,7 +38,7 @@ caption:
 pinned_comment: {platforms: [], replies: []}
 preferences: {styles: [big_reaction, funny, glitch, fail]}
 clip: {min_seconds: 15, max_seconds: 60}
-forbid: [spoilers, ad_like, explicit]
+forbid: [ad_like, explicit]
 banned_words: []
 submit_within_minutes: 30
 live:

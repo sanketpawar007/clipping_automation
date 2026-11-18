@@ -34,6 +34,8 @@ class Window:
     ad_like: bool = False
     spoiler: bool = False
     explicit: bool = False
+    postable: bool = True
+    zooms: list[float] = field(default_factory=list)   # source times to punch in
     score: float = 0.0
 
     @property

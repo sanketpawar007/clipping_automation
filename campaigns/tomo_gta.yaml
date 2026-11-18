@@ -20,10 +20,14 @@ editing:
   cold_open: true
   end_on_payoff: true
   learn_from_top_clips: true
+  video_editor: true
+  min_virality: 6
+  credit: "@Tomovids"
+  cta: "Subscribe to Tomo on YouTube"
 overlays: {}
 caption:
   must_contain: ["#tomovids", "#gta6", "@Tomovids", "Subscribe to Tomo on YouTube"]
-  hashtags: ["#tomovids", "#gta6"]
+  hashtags: ["#tomovids", "#gta6", "#tomo", "#gtavi", "#funnymoments"]
   templates:
     - "Tomo {hook}\nSubscribe to Tomo on YouTube @Tomovids\n{hashtags}"
     - "{hook} 😭\nSubscribe to Tomo on YouTube @Tomovids for more\n{question} 👇\n{hashtags}"
