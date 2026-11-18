@@ -5,6 +5,7 @@ import numpy as np
 
 
 def _smooth(x: np.ndarray, k: int) -> np.ndarray:
+    k = min(k, len(x))                 # a short video must not grow to the window's length
     if len(x) == 0 or k <= 1:
         return x
     return np.convolve(x, np.ones(k) / k, mode="same")

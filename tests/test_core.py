@@ -144,3 +144,9 @@ def test_caption_uses_engagement_question():
     camp = campaigns.load("lhm")
     cap = check.build_caption(camp, "He said it out loud", 1, "Is he right?")
     assert cap.splitlines()[0].endswith("@lethimmansplain") and "Is he right? 👇" in cap
+
+
+def test_signals_on_video_shorter_than_smoothing_window():
+    tracks = signals.build({"duration": 44, "heatmap": [], "comment_timestamps": [],
+                            "chat_times": [10, 11, 12]}, np.full(45, -30.0))
+    assert all(len(v) == 45 for v in tracks.values())
