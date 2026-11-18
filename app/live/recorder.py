@@ -40,7 +40,8 @@ class Recorder:
         s = get_settings()
         if "youtube.com" in self.url or "youtu.be" in self.url:
             cmd = [shutil.which("yt-dlp") or "yt-dlp", "-q", "--no-warnings", "-f",
-                   "best[height<=1080]/best", "-o", "-", self.url]
+                   "best[height<=1080]/bv*[height<=1080][vcodec^=avc1]+ba", "--downloader", "ffmpeg",
+                   "--hls-use-mpegts", "-o", "-", self.url]
             if s.ytdlp_cookies_file:
                 cmd[1:1] = ["--cookies", s.ytdlp_cookies_file]
             return cmd
@@ -131,3 +132,15 @@ def is_live(url: str) -> bool:
     p = subprocess.run([shutil.which("streamlink") or "streamlink", "--json", url],
                        capture_output=True, text=True, timeout=90)
     return '"streams"' in p.stdout and '"error"' not in p.stdout
+
+
+def youtube_video_id(url: str) -> str | None:
+    """The video id of a channel's current live stream (the /live URL redirects to it)."""
+    cmd = [shutil.which("yt-dlp") or "yt-dlp", "-q", "--no-warnings", "--skip-download", "--print", "%(id)s",
+           url]
+    s = get_settings()
+    if s.ytdlp_cookies_file:
+        cmd[1:1] = ["--cookies", s.ytdlp_cookies_file]
+    p = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
+    out = p.stdout.strip().splitlines()
+    return out[-1] if out else None

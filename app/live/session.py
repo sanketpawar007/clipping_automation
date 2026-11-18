@@ -162,6 +162,29 @@ class Session:
             telegram.send_text(f"⚫ {self.camp.streamer or self.slug} stream ended. Live clipping stopped.")
 
 
+def youtube_vod_pass(slug: str, video_id: str, chunk_s: int = 4 * 3600) -> None:
+    """Fallback for YouTube, where live recording from a server is unreliable: once the stream
+    has ended, clip the saved broadcast in chunks."""
+    from app.ingest.vod import MAX_SPAN_S
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    console.print(f"[{slug}] stream ended: clipping the saved broadcast {url}")
+    telegram.send_text(f"⚫ Stream ended. Clipping the saved broadcast now: {url}")
+    import yt_dlp
+    with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True,
+                           "cookiefile": get_settings().ytdlp_cookies_file or None}) as y:
+        duration = float(y.extract_info(url, download=False).get("duration") or 0)
+    start = 0.0
+    while start < duration:
+        end = min(duration, start + min(chunk_s, MAX_SPAN_S))
+        try:
+            ids = pipeline.run(url, slug, start=start if start or end < duration else None,
+                               end=end if start or end < duration else None)
+            pipeline.send_live_clips(ids)
+        except Exception as exc:  # noqa: BLE001
+            console.print(f"[red][{slug}] VOD chunk {start:.0f}-{end:.0f} failed: {exc}[/]")
+        start = end
+
+
 def watch(slug: str, url: str | None = None, poll_s: int = 60) -> None:
     """Waits for the streamer to go live, clips the whole stream, then waits again."""
     camp = campaigns.load(slug)
@@ -182,7 +205,18 @@ def watch(slug: str, url: str | None = None, poll_s: int = 60) -> None:
             console.print(f"[yellow]live check failed: {exc}[/]")
             live = False
         if live:
-            Session(slug, url).run()
+            youtube = "youtube.com" in url or "youtu.be" in url
+            vid = None
+            if youtube:
+                from app.live.recorder import youtube_video_id
+                vid = youtube_video_id(url)
+            session = Session(slug, url)
+            session.run()
+            if youtube and vid and session.rec.recorded_until() < 600:
+                # live recording failed early: wait for the broadcast to end, then use its VOD
+                while is_live(url):
+                    time.sleep(poll_s * 5)
+                youtube_vod_pass(slug, vid)
             continue                     # check again at once: it may have been a short drop
         time.sleep(poll_s)
 
