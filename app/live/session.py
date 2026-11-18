@@ -162,6 +162,14 @@ def watch(slug: str, url: str | None = None, poll_s: int = 60) -> None:
     camp = campaigns.load(slug)
     url = url or camp.sources[0]
     console.print(f"Watching {url} for {camp.name}. Checks every {poll_s}s.")
+    if camp.live.not_before:
+        from datetime import datetime
+        opens = datetime.fromisoformat(camp.live.not_before).timestamp()
+        if time.time() < opens:
+            console.print(f"Footage before {camp.live.not_before} is not eligible: waiting "
+                          f"{(opens - time.time()) / 3600:.1f} h.")
+            while time.time() < opens:
+                time.sleep(min(300, max(1, opens - time.time())))
     while True:
         try:
             live = is_live(url)

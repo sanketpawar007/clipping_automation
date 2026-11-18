@@ -129,6 +129,8 @@ class Verdict(BaseModel):
     reason: str = Field(description="One sentence: why this works or does not")
     ad_like: bool = Field(description="True if the clip reads like an advert or sponsor read")
     spoiler: bool = Field(description="True if it reveals a story spoiler for a game, film or show")
+    explicit: bool = Field(description="True if it relies on sexual content, slurs or heavy profanity "
+                                       "that would get the post limited or removed")
 
 
 class JudgeResult(BaseModel):

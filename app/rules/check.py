@@ -25,7 +25,8 @@ def pinned_comment(campaign: Campaign, index: int = 0) -> str:
 
 
 def check(campaign: Campaign, *, caption: str, duration: float, render: dict,
-          clip_text: str = "", ad_like: bool = False, spoiler: bool = False) -> list[dict]:
+          clip_text: str = "", ad_like: bool = False, spoiler: bool = False,
+          explicit: bool = False) -> list[dict]:
     """Returns [{rule, ok, detail}]. A clip is compliant when every `ok` is True."""
     out: list[dict] = []
 
@@ -63,6 +64,8 @@ def check(campaign: Campaign, *, caption: str, duration: float, render: dict,
 
     if "ad_like" in campaign.forbid:
         add("not ad-like", not ad_like, "judge flagged it as an advert" if ad_like else "")
+    if "explicit" in campaign.forbid:
+        add("not explicit", not explicit, "judge flagged explicit content" if explicit else "")
     if "spoilers" in campaign.forbid:
         add("no spoilers", not spoiler, "judge flagged a story spoiler" if spoiler else "")
     return out

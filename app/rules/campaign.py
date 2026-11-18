@@ -111,6 +111,8 @@ class Live(BaseModel):
     sweep_minutes: int = 15          # also review every N minutes for quotes chat did not react to
     sweep_clips: int = 1
     max_clips_per_hour: int = 10     # spending cap
+    min_score: float = 0.55          # live clips below this are dropped, not sent
+    not_before: str | None = None    # ISO time; streams before this are not eligible footage
     keep_minutes: int = 90           # raw footage kept on disk
     send_to_phone: bool = True       # send each live clip to Telegram straight away
 

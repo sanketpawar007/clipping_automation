@@ -33,6 +33,7 @@ class Window:
     video: float | None = None
     ad_like: bool = False
     spoiler: bool = False
+    explicit: bool = False
     score: float = 0.0
 
     @property
@@ -144,7 +145,7 @@ def apply_verdict(w: Window, v, context: int = 2) -> None:
         w.cold_line = v.cold_open_line
     w.hook, w.reason = v.caption_hook, v.reason
     w.headline, w.question = v.headline, v.caption_question
-    w.ad_like, w.spoiler = v.ad_like, v.spoiler
+    w.ad_like, w.spoiler, w.explicit = v.ad_like, v.spoiler, v.explicit
 
 
 def final_score(w: Window, weights: dict[str, float], active: set[str]) -> float:

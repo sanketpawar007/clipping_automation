@@ -94,7 +94,12 @@ def run_local(path, campaign_slug: str, title: str, stream_url: str, stream_offs
     if profile:
         meta["layout"] = profile
     (workdir / "meta.json").write_text(db.dumps(meta))
-    return run(meta["url"], campaign_slug, n_clips=n_clips, meta=meta, chat_lines=chat_lines)
+    try:
+        return run(meta["url"], campaign_slug, n_clips=n_clips, meta=meta, chat_lines=chat_lines)
+    finally:
+        # raw live footage is large and a marathon runs all day: keep only the finished clips
+        for big in ("source.mp4", "audio.m4a"):
+            (workdir / big).unlink(missing_ok=True)
 
 
 def run(url: str, campaign_slug: str, n_clips: int | None = None, with_captions: bool = True,
@@ -207,6 +212,13 @@ def run(url: str, campaign_slug: str, n_clips: int | None = None, with_captions:
         rest = sorted((w for w in shortlist if w not in reserved), key=lambda w: w.score, reverse=True)
         final = sorted(reserved + rest[: max(0, n_clips - len(reserved))],
                        key=lambda w: w.score, reverse=True)
+        if meta.get("live"):
+            # live clips go straight to the phone, so only send ones the judge rated well
+            dropped = [w for w in final if w.score < camp.live.min_score or w.explicit]
+            final = [w for w in final if w not in dropped]
+            if dropped:
+                _step(f"dropped {len(dropped)} weak or explicit candidate(s) (best "
+                      f"{max(w.score for w in dropped):.2f}, needs {camp.live.min_score})", t0)
 
         clip_ids: list[int] = []
         for i, w in enumerate(final):
@@ -219,7 +231,8 @@ def run(url: str, campaign_slug: str, n_clips: int | None = None, with_captions:
             hook = w.hook or text.split(". ")[0][:60]
             caption = check.build_caption(camp, hook, i, w.question)
             report = check.check(camp, caption=caption, duration=r["duration"], render=r,
-                                 clip_text=text, ad_like=w.ad_like, spoiler=w.spoiler)
+                                 clip_text=text, ad_like=w.ad_like, spoiler=w.spoiler,
+                                 explicit=w.explicit)
             with db.connect() as conn:
                 cur = conn.execute(
                     """INSERT INTO clips (video_id, campaign, start, end, score, hook, reason, caption,

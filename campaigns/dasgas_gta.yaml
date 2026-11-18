@@ -35,3 +35,7 @@ clip: {min_seconds: 15, max_seconds: 60}
 forbid: [spoilers, ad_like, explicit]
 banned_words: []
 submit_within_minutes: 30
+live:
+  not_before: "2026-11-19T00:00:00-08:00"   # only Dom's 19 Nov stream is eligible
+  chat: false        # Kick moved its chat server; clips come from audio spikes and sweeps
+  sweep_minutes: 10
