@@ -25,3 +25,9 @@
 - On the VM: `sudo systemctl enable --now clipper-live@lacy_gta` (one unit per campaign). Logs: `journalctl -u clipper-live@lacy_gta -f`.
 - Long VODs: `clip <url> -c <campaign> --start 2:00:00 --end 5:00:00` (4 hours max per run).
 - Gaming campaigns without a `profile:` detect facecam/IRL/gameplay layout automatically.
+
+## Pages (updated 18 Nov 2026, see PLAN.md and campaigns/briefs/HANDOFF_gta_vice_vision.md §5)
+- Each campaign has `page:` (which of our accounts posts it). Streamer campaigns (lacy/clix/tomo/dasgas) -> `hypereplayhq` (no TikTok); Tokyo Girl -> `vicevisionclips`; a future news/secrets mode -> `sixdecodedhq`; LHM -> `lhmtruthbombs`. Never the same clip on two pages.
+- Page colours and the "Follow @handle" end-card line live in `brands.yaml`.
+- No engagement automation (likes/comments/follows). Warm-up and posting stay manual on the phone.
+- Planned: "news/secrets" mode for Six Decoded (short text-led explainers).
