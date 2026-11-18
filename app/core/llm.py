@@ -267,6 +267,11 @@ class EditPlan(BaseModel):
     what_happens: str = Field(description="One sentence: what actually happens in the clip")
     spoiler: bool = Field(description="True if it shows a story ending, character death or plot twist")
     explicit: bool = Field(description="True if it relies on sexual content, slurs or heavy profanity")
+    unsafe_people: bool = Field(description="True if the clip shows or involves anyone who is or may be "
+                                            "under 18, or a member of the public who did not choose to be "
+                                            "on stream (strangers on random video-chat sites such as "
+                                            "Omegle/Umingle, passers-by being filmed), or sexual or "
+                                            "romantic talk with a stranger")
     reason: str = Field(description="One sentence: why it will or will not get views")
 
 
@@ -292,6 +297,8 @@ Campaign rules and preferences:
 Transcript of this footage (seconds from the start of this video):
 {transcript}
 
+Never pick a moment that involves a minor, a stranger from a random video-chat site, or sexual \
+talk with a stranger, however funny: mark unsafe_people=true and postable=false.
 Reject (postable=false) anything a stranger would scroll past. Be strict: one great clip beats \
 ten average ones."""
 

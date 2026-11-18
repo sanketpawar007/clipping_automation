@@ -105,8 +105,8 @@ def _apply_plan(w: select.Window, src: str, meta: dict, camp: campaigns.Campaign
     w.zooms = [a + z for z in plan.zooms if st <= z <= en][:3]
     w.reason = f"{plan.what_happens} {plan.reason}".strip()
     w.spoiler = w.spoiler or plan.spoiler
-    w.explicit = w.explicit or plan.explicit
-    w.postable = plan.postable and plan.virality >= camp.editing.min_virality and not w.explicit \
+    w.explicit = w.explicit or plan.explicit or plan.unsafe_people
+    w.postable = not plan.unsafe_people and plan.postable and plan.virality >= camp.editing.min_virality and not w.explicit \
         and not (w.spoiler and not camp.editing.spoiler_warning)
     console.print(f"         {'KEEP' if w.postable else 'drop'} {plan.virality}/10 "
                   f"{transcript.fmt_time(w.start)} {plan.headline!r}: {plan.what_happens} {plan.reason}",
