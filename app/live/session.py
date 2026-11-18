@@ -145,9 +145,17 @@ class Session:
         if self.chat and self.chat.start():
             self.log("chat listener started")
         telegram.send_text(f"🔴 {self.camp.streamer or self.slug} is live. Live clipping started.")
+        last_progress, last_seen = time.time(), 0.0
         try:
             while True:
                 time.sleep(5)
+                got = self.rec.recorded_until()
+                if got > last_seen:
+                    last_progress, last_seen = time.time(), got
+                elif time.time() - last_progress > 120:
+                    # the recorder is running but nothing new arrives (seen with YouTube live)
+                    self.log("[yellow]no new footage for 2 minutes: stopping this recording[/]")
+                    break
                 if not self.rec.alive():
                     # the stream dropped or ended; watch() starts a fresh session if it is back
                     self.log("[yellow]recording stopped[/]")
