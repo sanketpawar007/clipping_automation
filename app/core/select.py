@@ -35,6 +35,11 @@ class Window:
     spoiler: bool = False
     explicit: bool = False
     postable: bool = True
+    fmt: str = "reaction"                 # reaction | story | reveal | montage (set by the video editor)
+    title_style: str = "box"              # box | plain | none
+    captions: bool = True
+    zoom_mode: str = "punch"              # punch | push | none
+    collect: dict | None = None           # a moment saved for a later montage
     zooms: list[float] = field(default_factory=list)   # source times to punch in
     score: float = 0.0
 

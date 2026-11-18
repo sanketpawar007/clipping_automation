@@ -104,6 +104,11 @@ class Session:
                     return
                 finally:
                     path.unlink(missing_ok=True)
+                try:
+                    from app.core import montage
+                    ids += montage.try_build(self.camp)
+                except Exception as exc:  # noqa: BLE001 - a failed montage must not stop the session
+                    self.log(f"[yellow]montage failed: {exc}[/]")
                 self.made.extend(time.time() for _ in ids)
                 self.log(f"[green]{reason}: {len(ids)} clip(s) ready: {ids}[/]")
                 if self.cfg.send_to_phone:

@@ -150,3 +150,17 @@ def test_signals_on_video_shorter_than_smoothing_window():
     tracks = signals.build({"duration": 44, "heatmap": [], "comment_timestamps": [],
                             "chat_times": [10, 11, 12]}, np.full(45, -30.0))
     assert all(len(v) == 45 for v in tracks.values())
+
+
+def test_reveal_layout_puts_game_full_screen_with_streamer_inset():
+    prof = {"layout": "gameplay_pip", "facecam": {"x": 0.0, "y": 0.25, "w": 0.18, "h": 0.2},
+            "gameplay_focus_x": 0.6}
+    vf, layout = reframe.build_filter("unused.mp4", 0, 10, 1920, 1080, prof)
+    assert layout == "gameplay_pip" and "overlay=40:330" in vf and "scale=1080:1920" in vf
+
+
+def test_reveal_title_only_for_first_seconds(tmp_path):
+    p = captions.write_ass([], 0, 20, tmp_path / "r.ass", headline="First look at Vice City",
+                           head_style="HeadPlain", headline_until=3.5)
+    body = p.read_text()
+    assert "Dialogue: 1,0:00:00.00,0:00:03.50,HeadPlain" in body

@@ -94,6 +94,17 @@ def build_filter(src: str | Path, start: float, end: float, w: int, h: int,
     profile = profile or {}
     layout = profile.get("layout", "auto")
 
+    if layout == "gameplay_pip" and profile.get("facecam"):
+        # reveals: the game fills the screen, the streamer stays as a small inset
+        f = profile["facecam"]
+        fx, fy, fw, fh = (int(f["x"] * w), int(f["y"] * h), int(f["w"] * w), int(f["h"] * h))
+        gw = int(h * OUT_W / OUT_H // 2 * 2)
+        gx = int(np.clip(profile.get("gameplay_focus_x", 0.5) * w - gw / 2, 0, w - gw))
+        return (f"[0:v]split[a][b];"
+                f"[b]crop={gw}:{h}:{gx}:0,scale={OUT_W}:{OUT_H}:flags=lanczos[bg];"
+                f"[a]crop={fw}:{fh}:{fx}:{fy},scale=380:-2:flags=lanczos,unsharp=5:5:0.6:5:5:0[fg];"
+                f"[bg][fg]overlay=40:330,setsar=1[v]"), "gameplay_pip"
+
     if layout == "facecam_top" and profile.get("facecam"):
         f = profile["facecam"]
         top_h = int(profile.get("facecam_height", FACECAM_H))

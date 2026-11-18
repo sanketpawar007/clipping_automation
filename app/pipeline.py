@@ -80,8 +80,8 @@ def stream_profile(camp: campaigns.Campaign, meta: dict, workdir) -> dict:
 
 def _apply_plan(w: select.Window, src: str, meta: dict, camp: campaigns.Campaign, sents,
                 workdir, winners: list[dict]) -> None:
-    """Lets Gemini watch the candidate (plus some room either side) and re-cut it: tight start and
-    end, a hook teaser first, punch-in zooms, a headline. Unworthy candidates are marked."""
+    """Lets Gemini watch the candidate (plus some room either side) and decide the treatment:
+    format, cuts, hook teaser, title and caption styling, zooms, or a moment to save for later."""
     pad_before, pad_after = 12.0, 10.0
     a = max(0.0, w.start - pad_before)
     b = min(meta["duration"], w.end + pad_after)
@@ -90,27 +90,44 @@ def _apply_plan(w: select.Window, src: str, meta: dict, camp: campaigns.Campaign
     if plan is None:
         return
     lo, hi = camp.clip.min_seconds, camp.clip.max_seconds
-    st, en = max(0.0, plan.start), min(b - a, plan.end)
-    if en - st < lo:                                   # too short: grow around the middle
-        mid = (st + en) / 2
-        st, en = max(0.0, mid - lo / 2), min(b - a, mid + lo / 2)
-    en = min(en, st + hi)
-    segs = [(a + st, a + en)]
+    cuts = sorted([(max(0.0, c.start), min(b - a, c.end)) for c in plan.cuts if c.end - c.start >= 1.0])
+    if not cuts:
+        cuts = [(w.start - a, w.end - a)]
+    if len(cuts) == 1 and cuts[0][1] - cuts[0][0] < lo:          # too short: grow around the middle
+        mid = sum(cuts[0]) / 2
+        cuts = [(max(0.0, mid - lo / 2), min(b - a, mid + lo / 2))]
+    while len(cuts) > 1 and sum(e - s0 for s0, e in cuts) > hi:   # too long: drop the last piece
+        cuts.pop()
+    if cuts[0][1] - cuts[0][0] > hi:
+        cuts = [(cuts[0][0], cuts[0][0] + hi)]
+    segs = [(a + s0, a + e) for s0, e in cuts]
     hs, he = plan.hook_start, plan.hook_end
-    if 0 <= hs < he and he - hs <= 4.0 and (hs - st) > 1.0 and st <= hs and he <= en:
+    if plan.format != "reveal" and 0 <= hs < he and he - hs <= 4.0 and hs - cuts[0][0] > 1.0 \
+            and any(s0 <= hs and he <= e for s0, e in cuts):
         segs.insert(0, (a + hs, a + he))              # teaser of the peak, then the clip from its setup
     w.segs = segs
+    w.fmt = plan.format if plan.format in ("reaction", "story", "reveal") else "reaction"
+    w.title_style = plan.title_style if plan.title_style in ("box", "plain", "none") else "box"
+    w.captions = plan.captions
+    w.zoom_mode = plan.zoom if plan.zoom in ("punch", "push", "none") else "none"
     w.video = plan.virality / 10
-    w.headline = plan.headline or w.headline
-    w.zooms = [a + z for z in plan.zooms if st <= z <= en][:3]
+    w.headline = plan.title or w.headline
+    w.zooms = [a + z for z in plan.zooms if any(s0 <= z <= e for s0, e in cuts)][:3] \
+        if w.zoom_mode == "punch" else []
     w.reason = f"{plan.what_happens} {plan.reason}".strip()
     w.spoiler = w.spoiler or plan.spoiler
     w.explicit = w.explicit or plan.explicit or plan.unsafe_people
-    w.postable = (not plan.unsafe_people and plan.postable and not w.explicit
-                  and plan.virality >= camp.editing.min_virality
+    w.postable = (not plan.unsafe_people and plan.postable and plan.format != "none"
+                  and not w.explicit and plan.virality >= camp.editing.min_virality
                   and not (w.spoiler and not camp.editing.spoiler_warning))
-    console.print(f"         {'KEEP' if w.postable else 'drop'} {plan.virality}/10 "
-                  f"{transcript.fmt_time(w.start)} {plan.headline!r}: {plan.what_happens} {plan.reason}",
+    m = plan.moment
+    if plan.collect_theme and not plan.unsafe_people and not w.explicit and 2.0 <= m.end - m.start <= 15:
+        w.collect = {"theme": plan.collect_theme.strip().lower(), "start": a + max(0.0, m.start),
+                     "end": a + min(b - a, m.end), "desc": plan.what_happens, "virality": plan.virality}
+    console.print(f"         {'KEEP' if w.postable else 'drop'} {plan.virality}/10 {w.fmt:8} "
+                  f"title={w.title_style} captions={'on' if w.captions else 'off'} zoom={w.zoom_mode}"
+                  f"{' collect=' + w.collect['theme'] if w.collect else ''} "
+                  f"{plan.title!r}: {plan.what_happens}",
                   highlight=False)
 
 
@@ -242,6 +259,12 @@ def run(url: str, campaign_slug: str, n_clips: int | None = None, with_captions:
             for w in shortlist:
                 w.score = select.final_score(w, weights, active)
             kept = [w for w in shortlist if w.postable]
+            from app.core import montage
+            saved = montage.save_moments(camp, meta, src, words,
+                                         [w.collect for w in shortlist if w.collect and not w.postable],
+                                         profile)
+            if saved:
+                _step(f"saved {saved} moment(s) for a later montage", t0)
             _step(f"editor kept {len(kept)} of {len(shortlist)} (needs {camp.editing.min_virality}/10)", t0)
             shortlist = kept
             reserved = [w for w in reserved if w in kept]
@@ -273,8 +296,10 @@ def run(url: str, campaign_slug: str, n_clips: int | None = None, with_captions:
                   f"  {w.duration:.0f}s  score {w.score:.2f}", t0)
             tag = "sc" if w.kind == "supercut" else "c"
             out = workdir / "clips" / f"{meta['video_id']}_{tag}{int(w.start)}.mp4"
-            r = render.render_clip(src, w.segs, words, out, camp, profile, with_captions, w.headline,
-                                   zooms=w.zooms, spoiler=w.spoiler)
+            r = render.render_clip(src, w.segs, words, out, camp, profile, with_captions and w.captions,
+                                   w.headline, zooms=w.zooms, spoiler=w.spoiler,
+                                   style={"fmt": w.fmt, "title": w.title_style, "zoom": w.zoom_mode,
+                                          "seed": int(w.start)})
             text = " ".join(sents[k].text for k in w.sentence_ids())
             hook = w.hook or text.split(". ")[0][:60]
             caption = check.build_caption(camp, hook, i, w.question)
@@ -291,13 +316,22 @@ def run(url: str, campaign_slug: str, n_clips: int | None = None, with_captions:
                      check.pinned_comment(camp, i), str(out), db.dumps(report),
                      db.dumps({**w.signals, "judge": w.judge, "video": w.video, "source": w.source,
                                "layout": r["layout"], "text": text, "duration": r["duration"],
-                               "cut_seconds": r["cut_seconds"], "parts": r["parts"], "zooms": w.zooms}),
-                     int(w.spoiler), db.now(), w.kind, w.headline, db.dumps(w.segs)))
+                               "cut_seconds": r["cut_seconds"], "parts": r["parts"], "zooms": w.zooms,
+                               "fmt": w.fmt, "title_style": w.title_style, "captions_on": w.captions,
+                               "zoom_mode": w.zoom_mode}),
+                     int(w.spoiler), db.now(), w.fmt if w.fmt != "reaction" else w.kind, w.headline,
+                     db.dumps(w.segs)))
                 clip_ids.append(cur.lastrowid)
             ok = "[green]compliant[/]" if check.compliant(report) else "[red]rule issues[/]"
             console.print(f"         {ok}  {r['duration']:.0f}s after cutting {r['cut_seconds']}s of "
                           f"dead air  {out.name}")
 
+        if camp.editing.video_editor and not meta.get("live"):
+            from app.core import montage
+            made = montage.try_build(camp)
+            if made:
+                _step(f"built {len(made)} montage(s) from saved moments: {made}", t0)
+                clip_ids += made
         with db.connect() as conn:
             conn.execute("UPDATE videos SET status='clipped' WHERE id=?", (video_row,))
         _step(f"done: {len(clip_ids)} clips ready for review (run `make review`)", t0)
@@ -330,8 +364,11 @@ def rerender(status: str = "pending") -> int:
         profile = stream_profile(camp, meta, meta_path.parent)
         sig0 = db.loads(r["signals"], {})
         out = render.render_clip(r["src"], segs, json.loads(words_path.read_text()), Path(r["path"]),
-                                 camp, profile, True, r["headline"] or "", zooms=sig0.get("zooms") or [],
-                                 spoiler=bool(r["spoiler"]))
+                                 camp, profile, sig0.get("captions_on", True), r["headline"] or "",
+                                 zooms=sig0.get("zooms") or [], spoiler=bool(r["spoiler"]),
+                                 style={"fmt": sig0.get("fmt", "reaction"),
+                                        "title": sig0.get("title_style", "box"),
+                                        "zoom": sig0.get("zoom_mode", "punch"), "seed": r["id"]})
         sig = db.loads(r["signals"], {})
         report = check.check(camp, caption=r["caption"], duration=out["duration"], render=out,
                              clip_text=sig.get("text", ""), spoiler=bool(r["spoiler"]),

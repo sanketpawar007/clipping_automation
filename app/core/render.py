@@ -40,10 +40,14 @@ def _relabel(graph: str, i: int) -> str:
 def render_clip(src: str | Path, segs: list[tuple[float, float]], words: list[dict],
                 out: Path, campaign: Campaign, profile: dict | None = None,
                 with_captions: bool = True, headline: str = "", zooms: list[float] | None = None,
-                spoiler: bool = False) -> dict:
+                spoiler: bool = False, style: dict | None = None) -> dict:
     """`segs` are source-time segments played in order (one for a plain clip, several for a
     supercut or a cold open)."""
     s = get_settings()
+    style = style or {}
+    fmt = style.get("fmt", "reaction")
+    if fmt in ("reveal", "montage") and (profile or {}).get("layout") == "facecam_top":
+        profile = {**profile, "layout": "gameplay_pip"}      # the game is the star
     info = media.probe(src)
     fps = 60 if info["fps"] > 45 else 30
     ed = campaign.editing
@@ -98,7 +102,13 @@ def render_clip(src: str | Path, segs: list[tuple[float, float]], words: list[di
 
     # Punch-in zooms on peak reactions, mapped from source time to the output timeline.
     zt = [o for z in (zooms or []) for o in _out_times(z, kept)]
-    if zt and ed.zoom > 0:
+    if style.get("zoom") == "push" and ed.zoom > 0:
+        # slow push-in across the whole clip: lets a reveal breathe
+        z_expr = f"1+{ed.zoom * 0.8}*on/{max(1, int(total * fps))}"
+        chain.append(f"[{vlast}]zoompan=z='{z_expr}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
+                     f":d=1:s={reframe.OUT_W}x{reframe.OUT_H}:fps={fps}[zv]")
+        vlast = "zv"
+    elif zt and ed.zoom > 0 and style.get("zoom", "punch") == "punch":
         a_in, hold, a_out = 0.12, 0.8, 0.25
         bumps = "+".join(
             f"{ed.zoom}*clip((T-{t - a_in:.3f})/{a_in},0,1)*clip(({t + hold:.3f}-T)/{a_out},0,1)" for t in zt)
@@ -109,6 +119,7 @@ def render_clip(src: str | Path, segs: list[tuple[float, float]], words: list[di
 
     # On-screen text the campaign asks for: credit, paid label, spoiler warning, end card.
     facecam = "facecam_top" in layouts
+    pip = "gameplay_pip" in layouts
     extra: list[dict] = []
     if ed.credit:
         extra.append(captions.overlay("Credit", ed.credit, 0, out_dur, 50, 230))
@@ -122,15 +133,23 @@ def render_clip(src: str | Path, segs: list[tuple[float, float]], words: list[di
     if ed.cta and out_dur > 6:
         extra.append(captions.overlay("Cta", ed.cta, max(0.0, out_dur - 2.8), out_dur, 540, cta_y,
                                       fade=150))
-    show_headline = bool(headline) and ed.headline.enabled
+    title_style = style.get("title", "box")
+    show_headline = bool(headline) and ed.headline.enabled and title_style != "none"
     if (with_captions and out_words) or show_headline or extra:
         # facecam layout: title on the seam between the two panels, captions over the gameplay
         margin = 470 if facecam else 400
         head = reframe.OUT_H - reframe.FACECAM_H - 45 if facecam else reframe.OUT_H - 470
+        if pip:
+            head = 700                          # reveal title low and short, the picture leads
+        seed = int(style.get("seed", 0))
         ass = captions.write_ass(out_words if with_captions else [], 0.0, out_dur,
                                  out.with_suffix(".ass"), font=s.caption_font, margin_v=margin,
                                  headline=headline if show_headline else "", head_margin=head,
-                                 overlays=extra)
+                                 overlays=extra,
+                                 head_style="HeadPlain" if title_style == "plain" or pip else "Head",
+                                 highlight=captions.ACCENTS[seed % len(captions.ACCENTS)],
+                                 # a reveal's title shows for the first seconds only
+                                 headline_until=min(3.5, out_dur) if fmt == "reveal" else None)
         chain.append(f"[{vlast}]ass=filename='{_esc(ass)}'[c]")
         vlast = "c"
 

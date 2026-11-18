@@ -245,26 +245,47 @@ def video_judge(source: str | Path, start: float, end: float, workdir: Path) -> 
 
 # ---------- video editor (gaming / streams) ----------
 
+class Cut(BaseModel):
+    start: float = Field(description="seconds from the start of THIS video")
+    end: float
+
+
 class EditPlan(BaseModel):
-    postable: bool = Field(description="False if a stranger scrolling would not care: nothing clearly "
-                                       "happens, it needs more context than a few seconds, it is a menu, "
-                                       "loading screen or cutscene, or the streamer is not seen or heard")
-    virality: int = Field(description="0-10: chance this goes viral on Shorts/Reels/TikTok. Be strict: "
-                                       "5 is average, 8+ only for a moment people will rewatch and share")
-    start: float = Field(description="Clip start, in seconds from the start of THIS video: where the "
-                                     "setup begins, no earlier")
-    end: float = Field(description="Clip end, in seconds from the start of THIS video: right after the "
-                                   "payoff/reaction lands, before it trails off")
-    hook_start: float = Field(description="Start of a 1.5-3 second teaser to show FIRST, before the clip "
-                                          "plays from the start: the most arresting instant (usually the "
-                                          "peak reaction or punchline). -1 if the clip already opens strong")
+    format: str = Field(description="reaction | story | reveal | none. reaction: one moment of the "
+                                    "streamer reacting. story: a few cuts from this footage joined into "
+                                    "setup -> escalation -> payoff. reveal: a first look at a place, car, "
+                                    "feature or detail people have never seen, where the GAME is the star. "
+                                    "none: nothing worth a standalone post")
+    postable: bool = Field(description="True only if this footage alone makes a clip strangers will "
+                                       "watch to the end")
+    virality: int = Field(description="0-10 chance a standalone clip goes viral. Strict: 5 is average, "
+                                      "8+ only for something people rewatch and share")
+    cuts: list[Cut] = Field(description="The pieces to play, in order. One cut for a reaction or reveal; "
+                                        "2-4 cuts for a story, skipping the boring parts between them. "
+                                        "Start at the setup, end right after the payoff")
+    hook_start: float = Field(description="Start of a 1.5-3 second teaser shown FIRST (the most arresting "
+                                          "instant). -1 if the clip already opens strong "
+                                          "or if it is a reveal")
     hook_end: float = Field(description="End of that teaser, -1 if none")
-    headline: str = Field(description="On-screen title, max 45 characters, at most one emoji, naming the "
-                                      "streamer and the concrete situation, like a story. Must be true to "
-                                      "the footage and must not give away the punchline")
-    zooms: list[float] = Field(description="1-3 moments (seconds from the start of THIS video) of peak "
-                                           "reaction or impact where the picture should punch in")
-    what_happens: str = Field(description="One sentence: what actually happens in the clip")
+    title: str = Field(description="On-screen title, max 45 characters: the streamer's name and the "
+                                   "concrete situation as a story, true to the footage, no punchline "
+                                   "giveaway. For a reveal: 'First look at <thing> in GTA 6' style")
+    title_style: str = Field(description="box (bold title box, for reactions and stories that need "
+                                          "context), plain (light text, when the picture explains itself), "
+                                          "or none (no title: the footage is self-explanatory)")
+    captions: bool = Field(description="True if the spoken words carry the moment and need subtitles; "
+                                       "False for visual moments, reveals or game noise")
+    zoom: str = Field(description="punch (quick punch-ins on peak reactions), push (slow push-in across a "
+                                  "reveal), or none")
+    zooms: list[float] = Field(description="For punch: 1-3 moments (seconds from the start of THIS "
+                                           "video) of peak reaction or impact. Empty otherwise")
+    collect_theme: str = Field(description="If this footage contains a short moment (3-12 s) that is good "
+                                           "but would be stronger combined with similar moments later, a "
+                                           "short theme label for it, e.g. 'first look: cars', 'police "
+                                           "chaos', 'deaths', 'Vice City views'. Empty if not")
+    moment: Cut = Field(description="That collectable moment's start and end (seconds from the start of "
+                                    "THIS video); 0,0 if collect_theme is empty")
+    what_happens: str = Field(description="One sentence: what actually happens")
     spoiler: bool = Field(description="True if it shows a story ending, character death or plot twist")
     explicit: bool = Field(description="True if it relies on sexual content, slurs or heavy profanity")
     unsafe_people: bool = Field(description="True if the clip shows or involves anyone who is or may be "
@@ -275,21 +296,27 @@ class EditPlan(BaseModel):
     reason: str = Field(description="One sentence: why it will or will not get views")
 
 
-EDITOR_PROMPT = """You are the editor for a top streamer-clips page on TikTok, YouTube Shorts and \
-Instagram Reels. Watch AND listen to this footage from {streamer}'s live stream and plan one short \
-vertical clip, or reject it.
+EDITOR_PROMPT = """You are the lead editor for a top streamer-clips page on TikTok, YouTube Shorts and \
+Instagram Reels. Watch AND listen to this footage from {streamer}'s live stream and decide what, if \
+anything, to make from it. Do not apply one template to everything: choose the treatment this \
+footage deserves.
 
 What makes these clips go viral:
 - HOOK in the first 2 seconds: the viewer must instantly see or hear that something is about to \
-happen. Usually that means opening on a 1.5-3 second teaser of the peak moment, then playing the \
-clip from its setup.
-- ONE clear moment: a funny, crazy, surprising or emotional thing with a setup, {streamer}'s real \
-reaction and a payoff. Cut anything that needs more than a few seconds of context.
-- End right after the payoff lands. No trailing chatter, no waiting.
-- 15-45 seconds total. Shorter is better if the moment is complete.
-- {streamer} must be the focus: their face or voice reacting, not plain gameplay.
+happen. For reactions and stories that usually means a 1.5-3 second teaser of the peak first.
+- ONE clear idea: a funny, crazy, surprising or emotional moment with a setup, the real reaction \
+and a payoff. Cut everything that needs more than a few seconds of context. End right after the \
+payoff. 15-45 seconds, shorter if complete.
+- Stories: if the good parts are spread out, use several cuts and skip the dead time between them.
+- Reveals: GTA 6 is brand new, so the first time people see a building, beach, car, weapon, \
+feature or detail is valuable on its own. Show it cleanly and let it breathe; little text.
+- Less is more on screen: only add a title box when the viewer needs context; only add subtitles \
+when the words matter. Visual moments often work best with no text at all.
+- {streamer} must be part of it (face or voice), except in reveals where the game can lead.
+- Small good moments that are not enough alone can be collected (collect_theme) and combined \
+later with similar ones into a montage.
 - Titles that perform on this kind of page are short stories with the streamer's name, for \
-example: "Lacy Got Hit With A $12,000 Restaurant Bill 😭", "Lacy got SCAMMED 💔".
+example: "Lacy Got Hit With A $12,000 Restaurant Bill", "Lacy got SCAMMED".
 {winning}
 Campaign rules and preferences:
 {brief}
@@ -298,9 +325,8 @@ Transcript of this footage (seconds from the start of this video):
 {transcript}
 
 Never pick a moment that involves a minor, a stranger from a random video-chat site, or sexual \
-talk with a stranger, however funny: mark unsafe_people=true and postable=false.
-Reject (postable=false) anything a stranger would scroll past. Be strict: one great clip beats \
-ten average ones."""
+talk with a stranger, however funny: set unsafe_people=true, postable=false, no collect_theme.
+Be strict: one great clip beats ten average ones."""
 
 
 def edit_plan(source: str | Path, start: float, end: float, campaign: Campaign, transcript_lines: str,
