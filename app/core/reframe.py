@@ -215,6 +215,37 @@ def _snap_to_border(greys: list, guess: tuple[float, float, float, float],
     return x0, y0, x1 - x0, y1 - y0
 
 
+def _moving_background(greys: list, face: tuple[float, float, float, float]) -> float:
+    """How much the picture around (not on) the face changes over time. A room behind a
+    full-screen camera barely changes; gameplay behind a cut-out facecam changes constantly."""
+    if len(greys) < 5:
+        return 0.0
+    stack = np.stack(greys[:40]).astype(np.float32)
+    std = stack.std(axis=0)
+    H, W = std.shape
+    fx, fy, fw, fh = face
+    x0, x1 = int(max(0, fx - fw) * W), int(min(1, fx + 2 * fw) * W)
+    y0, y1 = int(max(0, fy - 0.6 * fh) * H), int(min(1, fy + 2 * fh) * H)
+    mask = np.zeros_like(std, dtype=bool)
+    mask[y0:y1, x0:x1] = True
+    mask[int(fy * H):int((fy + fh) * H), int(fx * W):int((fx + fw) * W)] = False   # not the face itself
+    return float(std[mask].mean()) if mask.any() else 0.0
+
+
+def _cutout_box(fx: float, fy: float, fw: float, fh: float) -> tuple[float, float, float, float]:
+    """Box around a cut-out streamer: head and shoulders, pushed to the nearest corner edges."""
+    bw, bh = min(0.42, fw * 3.0), min(0.6, fh * 3.4)
+    bx = float(np.clip(fx + fw / 2 - bw / 2, 0, 1 - bw))
+    by = float(np.clip(fy - 0.45 * fh, 0, 1 - bh))
+    if fx + fw / 2 < 0.35:
+        bx = 0.0                                   # cam in the left part: reach the left edge
+    elif fx + fw / 2 > 0.65:
+        bx = 1 - bw
+    if fy + fh / 2 > 0.55:
+        bh = min(0.6, 1 - by)                      # cam low in the frame: reach the bottom edge
+    return bx, by, bw, bh
+
+
 def detect_stream_layout(src: str | Path, duration: float, w: int, h: int, samples: int = 40) -> dict:
     """Works out a streamer's layout from the video itself, so no profile file is needed.
 
@@ -251,8 +282,12 @@ def detect_stream_layout(src: str | Path, duration: float, w: int, h: int, sampl
             by = float(np.clip(fy + fh / 2 - bh * 0.45, 0, 1 - bh))
             bx, by, bw, bh = _snap_to_border(greys, (bx, by, bw, bh), (fx, fy, fw, fh))
             if bw >= 0.5 or bh >= 0.6:
-                # the "webcam" is most of the picture: a full-screen camera (just chatting / IRL)
-                return {"layout": "track", "detected": f"full-screen camera ({share:.0%} of frames)"}
+                if _moving_background(greys, (fx, fy, fw, fh)) < 12:
+                    # a still room around the face: a full-screen camera (just chatting / IRL)
+                    return {"layout": "track", "detected": f"full-screen camera ({share:.0%} of frames)"}
+                # the game keeps moving around the face: a cut-out (green-screen) facecam with no
+                # frame. Take the corner around the person, reaching the nearest frame edges.
+                bx, by, bw, bh = _cutout_box(fx, fy, fw, fh)
             face_cx = fx + fw / 2
             # keep the gameplay under the cam rather than the side the cam covers
             focus = 0.5 if 0.3 < face_cx < 0.7 else (0.6 if face_cx < 0.3 else 0.4)
