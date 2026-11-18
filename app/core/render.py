@@ -167,7 +167,7 @@ def render_clip(src: str | Path, segs: list[tuple[float, float]], words: list[di
 
     media.run([s.ffmpeg, "-y", "-v", "error", *inputs, "-filter_complex", ";".join(chain),
                "-map", f"[{vlast}]", "-map", f"[{alast}]", "-c:v", "libx264", "-preset", "fast",
-               "-crf", "18", "-maxrate", "12M", "-bufsize", "24M", "-pix_fmt", "yuv420p",
+               "-crf", "18", "-maxrate", "8M", "-bufsize", "16M", "-pix_fmt", "yuv420p",
                "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", str(out)])
     return {"layout": "+".join(dict.fromkeys(layouts)), "watermark": wm_applied,
             "captions": with_captions and bool(out_words), "headline": show_headline,

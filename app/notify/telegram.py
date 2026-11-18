@@ -46,11 +46,30 @@ def send_text(text: str) -> bool:
     return True
 
 
+BOT_LIMIT = 48 * 1024 * 1024        # Telegram bots can send files up to 50 MB
+
+
+def _fit_for_telegram(path: Path) -> Path:
+    """Clips over the bot limit get a copy encoded to just fit (still full HD)."""
+    if path.stat().st_size <= BOT_LIMIT:
+        return path
+    from app.core import media
+    dur = media.probe(path)["duration"]
+    kbps = int(BOT_LIMIT * 8 / max(dur, 1) / 1000 * 0.92) - 160      # leave room for audio
+    out = path.with_name(path.stem + "_tg.mp4")
+    if not out.exists():
+        media.run([get_settings().ffmpeg, "-y", "-v", "error", "-i", str(path), "-c:v", "libx264",
+                   "-preset", "fast", "-b:v", f"{kbps}k", "-maxrate", f"{kbps}k", "-bufsize", f"{2 * kbps}k",
+                   "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", str(out)])
+    return out
+
+
 def send_video(path: Path, caption: str = "") -> bool:
     """Sends as a document so Telegram does not re-compress the clip (bot limit: 50 MB)."""
     if not configured():
         console.print(f"[dim]\\[telegram not configured][/] would send {path}")
         return False
+    path = _fit_for_telegram(path)
     with open(path, "rb") as fh:
         _call("sendDocument", {"chat_id": get_settings().telegram_chat_id, "caption": caption[:1024]},
               files={"document": (path.name, fh, "video/mp4")})
