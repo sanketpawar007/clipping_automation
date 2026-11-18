@@ -178,8 +178,8 @@ def youtube_vod_pass(slug: str, video_id: str, chunk_s: int = 4 * 3600) -> None:
     console.print(f"[{slug}] stream ended: clipping the saved broadcast {url}")
     telegram.send_text(f"⚫ Stream ended. Clipping the saved broadcast now: {url}")
     import yt_dlp
-    with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True,
-                           "cookiefile": get_settings().ytdlp_cookies_file or None}) as y:
+    from app.live.recorder import _cookie_copy
+    with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True, "cookiefile": _cookie_copy()}) as y:
         duration = float(y.extract_info(url, download=False).get("duration") or 0)
     start = 0.0
     while start < duration:
@@ -206,9 +206,20 @@ def watch(slug: str, url: str | None = None, poll_s: int = 60) -> None:
                           f"{(opens - time.time()) / 3600:.1f} h.")
             while time.time() < opens:
                 time.sleep(min(300, max(1, opens - time.time())))
+    from app.live.recorder import YouTubeBlocked
+    last_alert = 0.0
     while True:
         try:
             live = is_live(url)
+        except YouTubeBlocked:
+            live = False
+            if time.time() - last_alert > 2 * 3600:
+                last_alert = time.time()
+                console.print("[red]YouTube rejected the cookies: re-export cookies.txt[/]")
+                telegram.send_text(
+                    f"⚠️ {camp.name}: YouTube is blocking the server again, so this stream cannot be "
+                    "watched. Re-export cookies.txt (incognito, spare Google account, "
+                    "youtube.com/robots.txt, 'Get cookies.txt LOCALLY') and send it to Claude.")
         except Exception as exc:  # noqa: BLE001
             console.print(f"[yellow]live check failed: {exc}[/]")
             live = False

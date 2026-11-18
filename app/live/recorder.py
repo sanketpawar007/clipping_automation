@@ -16,6 +16,24 @@ from app.config import get_settings
 SEG_S = 10
 
 
+class YouTubeBlocked(RuntimeError):
+    """YouTube answered "Sign in to confirm you're not a bot": the cookies need re-exporting."""
+
+
+def _cookie_copy() -> str | None:
+    """A private copy of cookies.txt per call: yt-dlp rewrites its cookie file, and several
+    processes sharing one file can corrupt it or rotate it into an invalid state."""
+    import tempfile
+    s = get_settings()
+    if not s.ytdlp_cookies_file or not Path(s.ytdlp_cookies_file).exists():
+        return None
+    fd, tmp = tempfile.mkstemp(prefix="ck_", suffix=".txt")
+    import os
+    os.close(fd)
+    shutil.copyfile(s.ytdlp_cookies_file, tmp)
+    return tmp
+
+
 def _die_with_parent() -> None:
     """Linux: ask the kernel to stop this child if the clipper itself dies, so a crash never
     leaves a recorder running (and filling the disk) on its own."""
@@ -37,13 +55,13 @@ class Recorder:
         self.locked: set[str] = set()
 
     def _source_cmd(self) -> list[str]:
-        s = get_settings()
         if "youtube.com" in self.url or "youtu.be" in self.url:
             cmd = [shutil.which("yt-dlp") or "yt-dlp", "-q", "--no-warnings", "-f",
                    "best[height<=1080]/bv*[height<=1080][vcodec^=avc1]+ba", "--downloader", "ffmpeg",
                    "--hls-use-mpegts", "-o", "-", self.url]
-            if s.ytdlp_cookies_file:
-                cmd[1:1] = ["--cookies", s.ytdlp_cookies_file]
+            ck = _cookie_copy()
+            if ck:
+                cmd[1:1] = ["--cookies", ck]
             return cmd
         return [shutil.which("streamlink") or "streamlink", "--stdout", "--loglevel", "error",
                 "--twitch-disable-ads", "--hls-live-edge", "2", self.url, self.quality]
@@ -124,10 +142,16 @@ def is_live(url: str) -> bool:
     if "youtube.com" in url or "youtu.be" in url:
         cmd = [shutil.which("yt-dlp") or "yt-dlp", "-q", "--no-warnings", "--skip-download",
                "--print", "%(is_live)s", url]
-        s = get_settings()
-        if s.ytdlp_cookies_file:
-            cmd[1:1] = ["--cookies", s.ytdlp_cookies_file]
-        p = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
+        ck = _cookie_copy()
+        if ck:
+            cmd[1:1] = ["--cookies", ck]
+        try:
+            p = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
+        finally:
+            if ck:
+                Path(ck).unlink(missing_ok=True)
+        if "confirm you" in p.stderr and "not a bot" in p.stderr:
+            raise YouTubeBlocked("YouTube wants new cookies")
         return p.stdout.strip().splitlines()[-1:] == ["True"]
     p = subprocess.run([shutil.which("streamlink") or "streamlink", "--json", url],
                        capture_output=True, text=True, timeout=90)
@@ -138,9 +162,13 @@ def youtube_video_id(url: str) -> str | None:
     """The video id of a channel's current live stream (the /live URL redirects to it)."""
     cmd = [shutil.which("yt-dlp") or "yt-dlp", "-q", "--no-warnings", "--skip-download", "--print", "%(id)s",
            url]
-    s = get_settings()
-    if s.ytdlp_cookies_file:
-        cmd[1:1] = ["--cookies", s.ytdlp_cookies_file]
-    p = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
+    ck = _cookie_copy()
+    if ck:
+        cmd[1:1] = ["--cookies", ck]
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
+    finally:
+        if ck:
+            Path(ck).unlink(missing_ok=True)
     out = p.stdout.strip().splitlines()
     return out[-1] if out else None
