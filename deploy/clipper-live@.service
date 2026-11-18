@@ -1,0 +1,14 @@
+[Unit]
+Description=viral-clipper live clipping for campaign %i (waits for the stream, clips while live)
+After=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/clipping_automation
+Environment=PATH=/home/ubuntu/.local/bin:/home/ubuntu/.deno/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/ubuntu/.local/bin/uv run python -u -m app.cli live -c %i
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

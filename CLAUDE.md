@@ -19,3 +19,9 @@
 - `make review`: dashboard at http://127.0.0.1:8010 (approve sends to Telegram).
 - Without `ANTHROPIC_API_KEY` the pipeline ranks on signals only; without `ASSEMBLYAI_API_KEY` it uses local Whisper (slow, no speakers).
 - Face tracking uses OpenCV YuNet (`assets/models/`), not MediaPipe: MediaPipe's current release needs a separate model download anyway and pulled in heavy dependencies.
+
+## Live clipping (Phase 2, built 18 Nov 2026)
+- `uv run python -m app.cli live -c <campaign>` waits for the campaign's first `sources` channel to go live, records 10s segments (`app/live/recorder.py`), listens to Twitch/Kick chat (`app/live/chat.py`), cuts on chat/audio spikes and every `live.sweep_minutes` (`app/live/session.py`), and sends clips to Telegram.
+- On the VM: `sudo systemctl enable --now clipper-live@lacy_gta` (one unit per campaign). Logs: `journalctl -u clipper-live@lacy_gta -f`.
+- Long VODs: `clip <url> -c <campaign> --start 2:00:00 --end 5:00:00` (4 hours max per run).
+- Gaming campaigns without a `profile:` detect facecam/IRL/gameplay layout automatically.
