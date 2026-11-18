@@ -95,19 +95,22 @@ def gameplay_window(cam: dict, w: int, h: int, aspect: float) -> tuple[int, int,
     cx0, cy0 = cam["x"] * w, cam["y"] * h
     cx1, cy1 = cx0 + cam["w"] * w, cy0 + cam["h"] * h
     best = None
-    for scale in np.linspace(1.0, 0.55, 19):
-        gh = int(h * scale) // 2 * 2
-        gw = int(min(w, gh * aspect)) // 2 * 2
-        gh = int(gw / aspect) // 2 * 2
-        for centre_x in (0.5, 0.55, 0.45, 0.6, 0.4):
-            gx = int(np.clip(centre_x * w - gw / 2, 0, w - gw))
-            gy = int(np.clip(0.47 * h - gh / 2, 0, h - gh))
-            overlap_w = max(0.0, min(gx + gw, cx1) - max(gx, cx0))
-            overlap_h = max(0.0, min(gy + gh, cy1) - max(gy, cy0))
-            if overlap_w * overlap_h <= 0.02 * gw * gh:        # at most a sliver of the cam
-                return gx, gy, gw, gh
-            if best is None:
-                best = (gx, gy, gw, gh)
+    # prefer staying near the centre (zooming in a little) over sliding towards the edges,
+    # where streams usually put chat boxes, alerts and viewer counts
+    for centres in ((0.5, 0.55, 0.45), (0.6, 0.4)):
+        for scale in np.linspace(1.0, 0.55, 19):
+            gh = int(h * scale) // 2 * 2
+            gw = int(min(w, gh * aspect)) // 2 * 2
+            gh = int(gw / aspect) // 2 * 2
+            for centre_x in centres:
+                gx = int(np.clip(centre_x * w - gw / 2, 0, w - gw))
+                gy = int(np.clip(0.47 * h - gh / 2, 0, h - gh))
+                overlap_w = max(0.0, min(gx + gw, cx1) - max(gx, cx0))
+                overlap_h = max(0.0, min(gy + gh, cy1) - max(gy, cy0))
+                if overlap_w * overlap_h <= 0.02 * gw * gh:      # at most a sliver of the cam
+                    return gx, gy, gw, gh
+                if best is None:
+                    best = (gx, gy, gw, gh)
     return best
 
 
