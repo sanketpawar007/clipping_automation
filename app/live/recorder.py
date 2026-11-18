@@ -16,6 +16,17 @@ from app.config import get_settings
 SEG_S = 10
 
 
+def _die_with_parent() -> None:
+    """Linux: ask the kernel to stop this child if the clipper itself dies, so a crash never
+    leaves a recorder running (and filling the disk) on its own."""
+    try:
+        import ctypes
+        import signal
+        ctypes.CDLL("libc.so.6").prctl(1, signal.SIGTERM)   # 1 = PR_SET_PDEATHSIG
+    except OSError:
+        pass                                                  # not Linux (e.g. a Mac): skip
+
+
 class Recorder:
     def __init__(self, url: str, outdir: Path, quality: str = "1080p60,1080p,720p60,720p,best"):
         self.url, self.outdir, self.quality = url, outdir, quality
@@ -38,13 +49,15 @@ class Recorder:
 
     def start(self) -> None:
         s = get_settings()
-        self.src = subprocess.Popen(self._source_cmd(), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        self.src = subprocess.Popen(self._source_cmd(), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                    preexec_fn=_die_with_parent)
         self.mux = subprocess.Popen(
             [s.ffmpeg, "-v", "error", "-i", "pipe:0", "-map", "0:v:0", "-map", "0:a:0?", "-c", "copy",
              "-f", "segment", "-segment_time", str(SEG_S), "-reset_timestamps", "1",
              "-segment_list", str(self.outdir / "list.csv"), "-segment_list_type", "csv",
              "-segment_list_flags", "+live", str(self.outdir / "seg_%06d.ts")],
-            stdin=self.src.stdout, stderr=subprocess.DEVNULL)
+            stdin=self.src.stdout, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            preexec_fn=_die_with_parent)
         self.src.stdout.close()          # ffmpeg owns the pipe now
         self.wall_start = time.time()
 
