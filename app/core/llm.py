@@ -65,6 +65,28 @@ def _client() -> anthropic.Anthropic | None:
     return anthropic.Anthropic(api_key=key) if key else None
 
 
+_last_alert = 0.0
+
+
+def _claude_failed(step: str, exc: Exception) -> None:
+    """Claude being unavailable (no credit, outage) must not stop clipping: the Gemini video
+    editor still picks and edits clips. Tell the user once every few hours."""
+    import time
+    global _last_alert
+    msg = str(exc)
+    console.print(f"[yellow]{step} skipped (Claude API): {msg[:160]}[/]")
+    if time.time() - _last_alert > 3 * 3600:
+        _last_alert = time.time()
+        from app.notify import telegram
+        hint = ("Your Anthropic credit has run out: top up at console.anthropic.com > Billing. "
+                if "credit balance" in msg else "")
+        try:
+            telegram.send_text(f"⚠️ Claude API error during clipping. {hint}Clipping continues with "
+                               f"Gemini only until it is fixed. ({msg[:150]})")
+        except Exception:  # noqa: BLE001
+            pass
+
+
 def _brief(campaign: Campaign) -> str:
     b = campaign.editing.brief.strip()
     return f"\n<campaign_cutting_brief>\n{b}\n</campaign_cutting_brief>\n" if b else ""
@@ -95,9 +117,13 @@ def recall(transcript: str, campaign: Campaign, duration_s: float,
             "Only propose one where the video truly has several strong takes on one theme.")
     else:
         prompt += "\nLeave supercuts empty."
-    resp = client.messages.parse(
-        model=s.recall_model, max_tokens=16000, system=RECALL_SYSTEM,
-        messages=[{"role": "user", "content": prompt}], output_format=RecallResult)
+    try:
+        resp = client.messages.parse(
+            model=s.recall_model, max_tokens=16000, system=RECALL_SYSTEM,
+            messages=[{"role": "user", "content": prompt}], output_format=RecallResult)
+    except anthropic.APIError as exc:
+        _claude_failed("recall", exc)
+        return None
     if resp.stop_reason == "refusal" or resp.parsed_output is None:
         console.print(f"[yellow]recall pass returned nothing ({resp.stop_reason})[/]")
         return None
@@ -193,11 +219,15 @@ def judge(blocks: list[dict], campaign: Campaign, top_clips: list[dict] | None =
         + (_winning(top_clips or []) if campaign.editing.learn_from_top_clips else "")
         + context
         + "\nReturn one verdict per candidate.")
-    resp = client.beta.messages.parse(
-        model=s.judge_model, max_tokens=16000, system=JUDGE_SYSTEM,
-        messages=[{"role": "user", "content": prompt}], output_format=JudgeResult,
-        # If the safety system declines the request, the API retries on a fallback model.
-        betas=["server-side-fallback-2026-07-01"], fallbacks="default")
+    try:
+        resp = client.beta.messages.parse(
+            model=s.judge_model, max_tokens=16000, system=JUDGE_SYSTEM,
+            messages=[{"role": "user", "content": prompt}], output_format=JudgeResult,
+            # If the safety system declines the request, the API retries on a fallback model.
+            betas=["server-side-fallback-2026-07-01"], fallbacks="default")
+    except anthropic.APIError as exc:
+        _claude_failed("judge", exc)
+        return {}
     if resp.stop_reason == "refusal" or resp.parsed_output is None:
         console.print(f"[yellow]judge pass returned nothing ({resp.stop_reason})[/]")
         return {}

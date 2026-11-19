@@ -31,6 +31,7 @@ class Session:
         self.cfg = self.camp.live
         stamp = time.strftime("%Y%m%d_%H%M%S")
         self.dir = get_settings().data_dir / "live" / slug / stamp
+        self._clear_old_sessions()
         self.rec = Recorder(self.url, self.dir / "segments", self.cfg.quality)
         self.chat = chatmod.ChatListener(self.url) if self.cfg.chat else None
         self.loud: list[float] = []
@@ -42,6 +43,14 @@ class Session:
         self.busy = threading.Lock()
 
     # ---- helpers ----
+    def _clear_old_sessions(self) -> None:
+        """Raw footage of earlier sessions is never used again; without this every restart left
+        gigabytes behind and filled the disk."""
+        import shutil
+        for old in self.dir.parent.glob("*/"):
+            if old != self.dir:
+                shutil.rmtree(old, ignore_errors=True)
+
     def log(self, msg: str) -> None:
         console.print(f"[dim]{time.strftime('%H:%M:%S')}[/] [{self.slug}] {msg}", highlight=False)
 

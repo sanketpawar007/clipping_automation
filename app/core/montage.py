@@ -101,9 +101,13 @@ def _plan(camp: Campaign, theme: str, items: list[dict]) -> MontagePlan | None:
               "Decide whether a montage of these makes one strong short clip "
               f"({camp.clip.min_seconds:.0f}-{camp.clip.max_seconds:.0f} seconds). Leave out weak or "
               "repetitive pieces. Make it only if the whole is clearly better than any single piece.")
-    resp = anthropic.Anthropic(api_key=s.anthropic_api_key).messages.parse(
-        model=s.judge_model, max_tokens=4000, messages=[{"role": "user", "content": prompt}],
-        output_format=MontagePlan)
+    try:
+        resp = anthropic.Anthropic(api_key=s.anthropic_api_key).messages.parse(
+            model=s.judge_model, max_tokens=4000, messages=[{"role": "user", "content": prompt}],
+            output_format=MontagePlan)
+    except anthropic.APIError as exc:
+        console.print(f"[yellow]montage planning skipped (Claude API): {str(exc)[:120]}[/]")
+        return None
     if resp.stop_reason == "refusal":
         return None
     return resp.parsed_output
