@@ -39,6 +39,7 @@ class Session:
         self.last_cut = -1e9
         self.last_sweep = 0.0
         self.made: list[float] = []          # wall times of clips made, for the hourly cap
+        self.clipped: list[tuple[float, float, int]] = []   # recording-time spans already clipped
         self.profile: dict | None = None
         self.busy = threading.Lock()
 
@@ -118,11 +119,38 @@ class Session:
                     ids += montage.try_build(self.camp)
                 except Exception as exc:  # noqa: BLE001 - a failed montage must not stop the session
                     self.log(f"[yellow]montage failed: {exc}[/]")
+                ids = self._drop_repeats(ids, base)
                 self.made.extend(time.time() for _ in ids)
                 self.log(f"[green]{reason}: {len(ids)} clip(s) ready: {ids}[/]")
                 if self.cfg.send_to_phone:
                     pipeline.send_live_clips(ids)
         threading.Thread(target=work, daemon=True).start()
+
+    def _drop_repeats(self, ids: list[int], base: float) -> list[int]:
+        """A spike and a sweep can both catch the same moment: keep the first clip of any stretch
+        of the stream and reject later ones that reuse most of its footage."""
+        from pathlib import Path
+        keep = []
+        with db.connect() as conn:
+            for i in ids:
+                row = conn.execute("SELECT segments, path, kind FROM clips WHERE id=?", (i,)).fetchone()
+                segs = db.loads(row["segments"], []) if row else []
+                if not segs or (row and row["kind"] == "montage"):
+                    keep.append(i)
+                    continue
+                spans = [(base + a, base + b) for a, b in segs]
+                total = sum(b - a for a, b in spans) or 1.0
+                dup = next((cid for a0, b0, cid in self.clipped
+                            if sum(max(0.0, min(b, b0) - max(a, a0)) for a, b in spans) / total > 0.3), None)
+                if dup:
+                    conn.execute("UPDATE clips SET status='rejected', reason=? WHERE id=?",
+                                 (f"Same moment as clip #{dup} (caught twice live)", i))
+                    Path(row["path"]).unlink(missing_ok=True)
+                    self.log(f"clip #{i} repeats #{dup}: dropped")
+                    continue
+                self.clipped += [(a, b, i) for a, b in spans]
+                keep.append(i)
+        return keep
 
     def tick(self) -> None:
         now_w, now_r = time.time(), self.rec_now()
