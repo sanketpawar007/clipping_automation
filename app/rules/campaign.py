@@ -124,6 +124,8 @@ class Live(BaseModel):
     max_clips_per_hour: int = 10     # spending cap
     min_score: float = 0.55          # live clips below this are dropped, not sent
     not_before: str | None = None    # ISO time; streams before this are not eligible footage
+    require_category: str | None = None   # regex: only clip while the stream's category matches,
+                                          # e.g. "Grand Theft Auto|GTA" (pauses during Just Chatting)
     keep_minutes: int = 45           # raw footage kept on disk (clips only need the last ~15 min)
     send_to_phone: bool = True       # send each live clip to Telegram straight away
 

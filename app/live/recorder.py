@@ -172,3 +172,17 @@ def youtube_video_id(url: str) -> str | None:
             Path(ck).unlink(missing_ok=True)
     out = p.stdout.strip().splitlines()
     return out[-1] if out else None
+
+
+def stream_category(url: str) -> str | None:
+    """The stream's current category as the platform reports it, e.g. 'Grand Theft Auto VI' or
+    'Just Chatting'. None if it cannot be read (YouTube, errors)."""
+    if "youtube.com" in url or "youtu.be" in url:
+        return None
+    import json
+    try:
+        p = subprocess.run([shutil.which("streamlink") or "streamlink", "--json", url],
+                           capture_output=True, text=True, timeout=90)
+        return (json.loads(p.stdout).get("metadata") or {}).get("category")
+    except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError):
+        return None

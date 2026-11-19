@@ -43,3 +43,5 @@ submit_within_minutes: 30
 posting_notes:
   - "Each clip needs 1,000 views to count; your approved views must total 750,000 to share the pool"
   - "English caption only; Kai Cenat must be the main focus"
+live:
+  require_category: "Grand Theft Auto|GTA"   # only while actually playing GTA (not Just Chatting/IRL)

@@ -40,6 +40,9 @@ class Session:
         self.last_sweep = 0.0
         self.made: list[float] = []          # wall times of clips made, for the hourly cap
         self.clipped: list[tuple[float, float, int]] = []   # recording-time spans already clipped
+        self.category: str | None = None
+        self.category_ok = True
+        self.category_checked = 0.0
         self.profile: dict | None = None
         self.busy = threading.Lock()
 
@@ -152,8 +155,30 @@ class Session:
                 keep.append(i)
         return keep
 
+    def _check_category(self) -> None:
+        """Pauses clipping while the streamer is not in the required category (e.g. Just Chatting
+        or IRL instead of GTA). Checked every 3 minutes; recording continues either way."""
+        import re
+        if not self.cfg.require_category or time.time() - self.category_checked < 180:
+            return
+        self.category_checked = time.time()
+        from app.live.recorder import stream_category
+        cat = stream_category(self.url)
+        if cat is None:
+            return                                         # unknown: keep the last decision
+        ok = bool(re.search(self.cfg.require_category, cat, re.I))
+        if cat != self.category or ok != self.category_ok:
+            self.log(f"category: {cat} -> {'clipping' if ok else 'paused (not playing the game)'}")
+            if ok and not self.category_ok:
+                self.last_sweep = self.rec_now()       # do not sweep footage from before the switch
+        self.category, self.category_ok = cat, ok
+
     def tick(self) -> None:
         now_w, now_r = time.time(), self.rec_now()
+        self._check_category()
+        if not self.category_ok:
+            self.last_sweep = now_r                    # nothing from the paused stretch gets swept
+            return
         self._update_loudness()
         if self.profile is None and self.rec.recorded_until() > 200:
             self._detect_layout()

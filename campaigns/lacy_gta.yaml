@@ -42,3 +42,5 @@ posting_notes:
   - "English caption only, no Japanese text"
   - "Keep the post up: views only count while it is live"
   - "Pool campaign: views add up across all your LACY clips (750K total needed to share the pool)"
+live:
+  require_category: "Grand Theft Auto|GTA"   # only while actually playing GTA (not Just Chatting/IRL)

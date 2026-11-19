@@ -41,3 +41,5 @@ submit_within_minutes: 30
 posting_notes:
   - "English caption only"
   - "Pool campaign: views add up across all your Clix clips (400K total needed to share the pool)"
+live:
+  require_category: "Grand Theft Auto|GTA"   # only while actually playing GTA (not Just Chatting/IRL)
