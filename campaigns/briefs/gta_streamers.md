@@ -9,3 +9,5 @@
 
 All four are posted from Vice Vision (@vicevisionclips), a GTA 6 page. Reach suggests a dedicated
 page per streamer but accepts a relevant pre-existing page. "No logos" means no watermark.
+
+| Kai Cenat $10,000 GTA 6 Pool (Clipped & Shipped) `1d2bcb00-c904-415f-aa82-f95b96baad86` (added 19 Nov) | twitch.tv/kaicenat and his YouTube, marathon from 18 Nov | Pool split by views; each clip needs 1K views to count; 750K total to share | TikTok, IG Reels, YT Shorts, X | Kai the primary focus (in the edit, not just the intro); his name in caption or overlay; `#KaiCenat`; no logos; no negative portrayal / hate farming; no botting, reposts or collab posts; account niche must match. Rules: docs.google.com/document/d/1z3h2gDIdr2LFgDrSkXf6rIIA72y62nluKHdWgki5iG0 |

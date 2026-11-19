@@ -1,0 +1,45 @@
+# Kai Cenat - $10,000 GTA 6 Pool Campaign (Clipped & Shipped). Rules doc:
+# docs.google.com/document/d/1z3h2gDIdr2LFgDrSkXf6rIIA72y62nluKHdWgki5iG0 (read in full 19 Nov 2026)
+id: 1d2bcb00-c904-415f-aa82-f95b96baad86
+name: Kai Cenat GTA 6 Pool
+niche: gaming
+streamer: Kai Cenat
+page: hypereplayhq                 # streamer clips go to Hype Replay (never the same clip on two pages)
+accounts: {youtube: hypereplayhq, instagram: hypereplayhq}
+platforms: [instagram, youtube]
+sources: ["https://www.twitch.tv/kaicenat"]   # marathon also on his YouTube; Twitch has chat for spikes
+payout_cpm: {}                     # pool: each clip needs 1K views to count, 750K total to share
+editing:
+  brief: |
+    Kai Cenat is streaming a GTA 6 marathon from 18 Nov. Clip his funniest moments, biggest
+    reactions, rage, chaos and memorable quotes while playing GTA 6. Kai must be the main focus:
+    his face or voice reacting, not plain gameplay, and he must be in the actual clip, not only
+    the intro. Keep the setup, his reaction and the payoff. Never portray him negatively or build
+    a false narrative ("hate farming"). Skip story cutscenes and mission endings (spoilers).
+    English only.
+  candidates: 10
+  supercut: {enabled: false}
+  tighten: {enabled: false}
+  headline: {enabled: true, style: "starts with Kai Cenat, then what happens, e.g. 'Kai Cenat got scammed in GTA 6'"}
+  cold_open: true
+  end_on_payoff: true
+  learn_from_top_clips: true
+  video_editor: true
+  min_virality: 6
+  cta: "Follow Kai Cenat on Twitch"
+overlays: {}                       # "No logos of any kind": no watermark
+caption:
+  must_contain: ["Kai Cenat", "#KaiCenat"]
+  hashtags: ["#KaiCenat", "#gta6", "#gtavi"]
+  templates:
+    - "Kai Cenat {hook}\n{question} 👇\n{hashtags}"
+    - "{hook} 😭 (Kai Cenat)\n{hashtags}"
+pinned_comment: {platforms: [], replies: []}
+preferences: {styles: [big_reaction, funny, quote, chaos]}
+clip: {min_seconds: 15, max_seconds: 60}
+forbid: [spoilers, ad_like, negative_portrayal, explicit]
+banned_words: []
+submit_within_minutes: 30
+posting_notes:
+  - "Each clip needs 1,000 views to count; your approved views must total 750,000 to share the pool"
+  - "English caption only; Kai Cenat must be the main focus"
